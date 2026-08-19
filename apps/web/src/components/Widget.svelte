@@ -1,12 +1,15 @@
 <script lang="ts">
   import { sniffMime } from '@obrobka/codecs';
-  import type { FitMode, OutputFormat } from '@obrobka/core';
+  import type { FitMode, OutputFormat, Tier } from '@obrobka/core';
   import { buildJob, getWorker, type WidgetState } from '../lib/worker-api.js';
   import FitModePicker from './FitModePicker.svelte';
+  import TierPicker from './TierPicker.svelte';
+  import * as Comlink from 'comlink';
 
   interface PresetInput {
     width: number; height: number; mode: FitMode;
     format: OutputFormat; padTransparent: boolean;
+    removeBg?: boolean; tier?: Tier; outlineOn?: boolean; outlineWidth?: number;
   }
   interface Preset { label: string; width: number; height: number; mode: FitMode }
 
@@ -28,7 +31,45 @@
     allowUpscale: false,
     format: preset?.format ?? 'png',
     quality: 80,
+    removeBg: preset?.removeBg ?? false,
+    tier: preset?.tier ?? 'fast',
+    feather: 0,
+    outlineOn: preset?.outlineOn ?? false,
+    outlineWidth: preset?.outlineWidth ?? 8,
+    outlineColor: '#ffffff',
   });
+
+  let downloadProgress = $state(0);
+  let providerName = $state<string | null>(null);
+
+  /**
+   * JPEG не має альфа-каналу: з видаленням фону користувач отримав би
+   * чорний фон замість прозорого. Перемикаємо на PNG — це те, чого він хотів.
+   */
+  async function onBgToggle(): Promise<void> {
+    if (state.removeBg && state.format === 'jpeg') state.format = 'png';
+    if (state.removeBg) await warmUp();
+    await process();
+  }
+
+  async function onTierChange(): Promise<void> {
+    await warmUp();
+    await process();
+  }
+
+  async function warmUp(): Promise<void> {
+    downloadProgress = 0.001;
+    try {
+      providerName = await getWorker().warmUp(
+        state.tier,
+        Comlink.proxy((f: number) => { downloadProgress = f; }),
+      );
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Не вдалося завантажити модель';
+    } finally {
+      downloadProgress = 0;
+    }
+  }
 
   /**
    * До гідратації острівця обробник change ще не навішений: користувач міг би
@@ -273,6 +314,48 @@
       Дозволити збільшення
     </label>
   </div>
+
+  <div class="toggles">
+    <label class="switch" data-testid="removebg">
+      <input type="checkbox" bind:checked={state.removeBg} onchange={onBgToggle} />
+      <span class="track" aria-hidden="true"></span>
+      Прибрати фон
+    </label>
+  </div>
+
+  {#if state.removeBg}
+    <TierPicker
+      bind:value={state.tier}
+      progress={downloadProgress}
+      provider={providerName}
+      onchange={onTierChange}
+    />
+
+    <div class="controls">
+      <label class="field">
+        <span>Пом'якшити край <em>{state.feather}</em></span>
+        <input type="range" min="0" max="8" bind:value={state.feather} onchange={process} />
+      </label>
+    </div>
+
+    <div class="toggles">
+      <label class="switch" data-testid="outline-toggle">
+        <input type="checkbox" bind:checked={state.outlineOn} onchange={process} />
+        <span class="track" aria-hidden="true"></span>
+        Обведення
+      </label>
+      {#if state.outlineOn}
+        <label class="field">
+          <span>Товщина <em>{state.outlineWidth}</em></span>
+          <input type="range" min="1" max="40" bind:value={state.outlineWidth} onchange={process} />
+        </label>
+        <label class="switch color">
+          <input type="color" bind:value={state.outlineColor} onchange={process} />
+          Колір
+        </label>
+      {/if}
+    </div>
+  {/if}
 
   {#if error !== ''}
     <p class="error" role="alert">{error}</p>

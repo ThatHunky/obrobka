@@ -1,5 +1,7 @@
 import * as Comlink from 'comlink';
-import type { FitMode, Job, OutputFormat, RGBA } from '@obrobka/core';
+import type { FitMode, Job, Op, OutputFormat, RGBA, Tier } from '@obrobka/core';
+
+export type Provider = 'webgpu' | 'wasm';
 
 export interface WidgetState {
   readonly width: number;
@@ -10,6 +12,12 @@ export interface WidgetState {
   readonly allowUpscale: boolean;
   readonly format: OutputFormat;
   readonly quality: number;
+  readonly removeBg: boolean;
+  readonly tier: Tier;
+  readonly feather: number;
+  readonly outlineOn: boolean;
+  readonly outlineWidth: number;
+  readonly outlineColor: string;
 }
 
 export function parseHexColor(hex: string): RGBA {
@@ -24,23 +32,42 @@ export function parseHexColor(hex: string): RGBA {
   };
 }
 
-/** Перетворює стан інтерфейсу на серіалізований Job. */
+/**
+ * Перетворює стан інтерфейсу на серіалізований Job.
+ *
+ * Порядок навмисний: фон знімається з оригіналу, а вписування в кадр
+ * відбувається вже з готовою прозорістю. Навпаки поля рамки з'їли б
+ * частину суб'єкта ще до сегментації.
+ */
 export function buildJob(s: WidgetState): Job {
+  const ops: Op[] = [];
+  if (s.removeBg) {
+    ops.push({ type: 'removeBackground', tier: s.tier, feather: s.feather });
+    if (s.outlineOn && s.outlineWidth > 0) {
+      ops.push({
+        type: 'outline',
+        width: s.outlineWidth,
+        color: parseHexColor(s.outlineColor),
+      });
+    }
+  }
+  ops.push({
+    type: 'fit',
+    width: s.width,
+    height: s.height,
+    mode: s.mode,
+    pad: s.padTransparent ? 'transparent' : parseHexColor(s.padColor),
+    allowUpscale: s.allowUpscale,
+  });
   return {
-    ops: [{
-      type: 'fit',
-      width: s.width,
-      height: s.height,
-      mode: s.mode,
-      pad: s.padTransparent ? 'transparent' : parseHexColor(s.padColor),
-      allowUpscale: s.allowUpscale,
-    }],
+    ops,
     output: s.format === 'png' ? { format: 'png' } : { format: s.format, quality: s.quality },
   };
 }
 
 export interface WorkerApi {
   process(bytes: ArrayBuffer, mime: string, job: Job): Promise<ArrayBuffer>;
+  warmUp(tier: Tier, onProgress: (fraction: number) => void): Promise<Provider | null>;
 }
 
 let cached: Comlink.Remote<WorkerApi> | null = null;

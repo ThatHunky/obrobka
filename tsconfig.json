@@ -18,6 +18,9 @@
     },
     {
       "path": "packages/segmenter-node"
+    },
+    {
+      "path": "packages/segmenter-web"
     }
   ]
 }

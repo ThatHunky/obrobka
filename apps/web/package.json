@@ -14,7 +14,9 @@
     "svelte": "5.56.9",
     "@astrojs/svelte": "9.0.1",
     "@astrojs/sitemap": "3.7.3",
-    "comlink": "4.4.2"
+    "comlink": "4.4.2",
+    "@obrobka/segmenter-web": "workspace:*",
+    "@obrobka/models": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.10.1"

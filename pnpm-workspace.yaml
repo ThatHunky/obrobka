@@ -5,6 +5,7 @@ packages:
 allowBuilds:
   esbuild: true
   onnxruntime-node: true
+  protobufjs: true
   workerd: true
 
 onlyBuiltDependencies:

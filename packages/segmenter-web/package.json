@@ -1,0 +1,13 @@
+{
+  "name": "@obrobka/segmenter-web",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@obrobka/core": "workspace:*",
+    "@obrobka/models": "workspace:*",
+    "onnxruntime-web": "1.27.0"
+  }
+}
