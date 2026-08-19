@@ -4,3 +4,7 @@ export { resample } from './ops/resample.js';
 export { crop } from './ops/crop.js';
 export { fit } from './ops/fit.js';
 export { runJob } from './ops/pipeline.js';
+export { maskBBox, resampleMask, dilateMask, featherMask, thresholdMask } from './ops/mask.js';
+export { applyMask } from './ops/applyMask.js';
+export { outline } from './ops/outline.js';
+export { smartCrop } from './ops/smartCrop.js';

@@ -51,6 +51,29 @@ export interface FitOptions {
   readonly allowUpscale?: boolean;
 }
 
+export type Tier = 'fast' | 'portrait' | 'quality';
+
+export interface OutlineOptions {
+  /** Товщина обведення в пікселях вихідного зображення. */
+  readonly width: number;
+  readonly color: RGBA;
+  /** Пом'якшення краю обведення. Типово 0. */
+  readonly feather?: number;
+  /** Чи розширювати полотно, коли обведення не влазить. Типово true. */
+  readonly expand?: boolean;
+}
+
+export interface SmartCropOptions {
+  /** Ширина, поділена на висоту. */
+  readonly aspectRatio: number;
+  /** Запас навколо суб'єкта як частка його більшої сторони. Типово 0.08. */
+  readonly padding?: number;
+  /** Поріг маски. Типово 128. */
+  readonly threshold?: number;
+  /** Рівень моделі для пошуку суб'єкта. Типово fast. */
+  readonly tier?: Tier;
+}
+
 export type OutputFormat = 'png' | 'jpeg' | 'webp' | 'avif';
 
 export interface EncodeOptions {

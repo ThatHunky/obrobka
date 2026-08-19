@@ -86,6 +86,47 @@
     await process();
   }
 
+  /**
+   * Вставка з буфера обміну.
+   *
+   * Основний шлях — подія paste: працює скрізь і не питає дозволу.
+   * Кнопка потрібна для телефонів, де Ctrl+V натиснути нема чим, і для
+   * випадків на кшталт стікерів із Google Photos, які можна лише скопіювати.
+   */
+  async function pasteFromClipboard(): Promise<void> {
+    error = '';
+    const clip = navigator.clipboard as Clipboard & { read?: () => Promise<ClipboardItem[]> };
+    if (typeof clip?.read !== 'function') {
+      error = 'Браузер не дає читати буфер обміну. Натисніть Ctrl+V або Cmd+V.';
+      return;
+    }
+    try {
+      for (const item of await clip.read()) {
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (type === undefined) continue;
+        const blob = await item.getType(type);
+        await accept(new File([blob], 'clipboard', { type: blob.type || type }));
+        return;
+      }
+      error = 'У буфері обміну немає зображення.';
+    } catch {
+      error = 'Не вдалося прочитати буфер. Дозвольте доступ або натисніть Ctrl+V.';
+    }
+  }
+
+  $effect(() => {
+    const onPaste = (e: ClipboardEvent): void => {
+      const item = Array.from(e.clipboardData?.items ?? [])
+        .find((i) => i.kind === 'file' && i.type.startsWith('image/'));
+      const file = item?.getAsFile();
+      if (file === null || file === undefined) return;
+      e.preventDefault();
+      void accept(file);
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  });
+
   async function process(): Promise<void> {
     if (sourceBytes === null) return;
     busy = true;
@@ -128,7 +169,8 @@
 >
   <!-- Зона прийому файлу -->
   <div class="drop" class:has={sourceUrl !== ''}>
-    <label class="pick btn btn-accent">
+    <div class="actions">
+      <label class="pick btn btn-accent">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
            stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
         <path d="M12 16V4m0 0L7 9m5-5 5 5" /><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
@@ -144,9 +186,27 @@
           if (f !== undefined) void accept(f);
         }}
       />
-    </label>
+      </label>
+
+      <button
+        type="button"
+        class="btn paste"
+        disabled={!ready}
+        data-testid="paste"
+        onclick={pasteFromClipboard}
+      >
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z" />
+          <path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2" />
+        </svg>
+        Вставити
+      </button>
+    </div>
+
     <p class="drop-hint">
-      або перетягніть сюди · <strong>файл не залишає ваш пристрій</strong>
+      перетягніть сюди або вставте через Ctrl+V · <strong>файл не залишає ваш пристрій</strong>
     </p>
   </div>
 
@@ -304,6 +364,7 @@
   .drop.has { padding: 1rem; }
   .dragging .drop { border-color: var(--accent); }
 
+  .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
   .pick { position: relative; overflow: hidden; }
   .pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .pick input:disabled { cursor: not-allowed; }
