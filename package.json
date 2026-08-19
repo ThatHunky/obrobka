@@ -10,7 +10,9 @@
     "typecheck": "tsc --build --force",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "shots": "playwright test --config playwright.shots.config.ts",
+    "e2e:prod": "playwright test --config playwright.prod.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",

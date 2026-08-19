@@ -7,6 +7,7 @@ dist/
 models/*.onnx
 node_modules/
 playwright-report/
+shots/
 test-results/
 *.tsbuildinfo
 .wrangler/

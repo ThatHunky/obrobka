@@ -1,0 +1,115 @@
+---
+/**
+ * Анімована демонстрація суті інструмента: широке зображення по черзі
+ * сідає у квадратний кадр трьома різними способами. Чиста CSS-анімація,
+ * нуль JavaScript — герой не залежить від гідратації.
+ *
+ * Шахівниця під кадром показує прозорість полів у режимі «вписати».
+ */
+---
+<figure class="demo" aria-label="Як зображення сідає в заданий кадр: вписати, заповнити, розтягнути">
+  <div class="frame checker">
+    <div class="shot"></div>
+    <div class="grid" aria-hidden="true"></div>
+  </div>
+  <figcaption class="modes" aria-hidden="true">
+    <span class="m m1">вписати</span>
+    <span class="m m2">заповнити</span>
+    <span class="m m3">розтягнути</span>
+  </figcaption>
+</figure>
+
+<style>
+  .demo {
+    display: grid;
+    gap: 0.9rem;
+    justify-items: center;
+  }
+
+  .frame {
+    --side: clamp(200px, 42vw, 300px);
+    position: relative;
+    width: var(--side);
+    height: var(--side);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    box-shadow: var(--shadow-lg);
+    isolation: isolate;
+  }
+
+  /* Тонка сітка поверх кадру — «технічність» без шуму */
+  .grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--fg) 8%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--fg) 8%, transparent) 1px, transparent 1px);
+    background-size: 25% 25%;
+  }
+
+  /* «Фотографія»: широкий градієнт 2:1 */
+  .shot {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    border-radius: 6px;
+    background:
+      radial-gradient(120% 140% at 15% 20%, var(--gold-400), transparent 55%),
+      radial-gradient(110% 130% at 85% 30%, var(--violet-400), transparent 60%),
+      linear-gradient(135deg, var(--cyan-400), #2b3f9e 70%);
+    animation: fitcycle 9s var(--ease-out) infinite;
+  }
+
+  /*
+   * 0–33 %  вписати:  ширина на всю, висота половинна, зверху й знизу прозорі поля
+   * 33–66 % заповнити: висота на всю, ширина вилазить за кадр і обрізається
+   * 66–100 % розтягнути: обидві осі на всю, пропорції зламано
+   */
+  @keyframes fitcycle {
+    0%, 24%   { width: 100%; height: 50%;  }
+    33%, 57%  { width: 200%; height: 100%; }
+    66%, 90%  { width: 100%; height: 100%; }
+    100%      { width: 100%; height: 50%;  }
+  }
+
+  .modes {
+    display: flex;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .m {
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--fg-faint);
+    animation: highlight 9s linear infinite;
+  }
+  .m1 { animation-delay: 0s; }
+  .m2 { animation-delay: -6s; }
+  .m3 { animation-delay: -3s; }
+
+  @keyframes highlight {
+    0%, 30% {
+      color: var(--accent-fg);
+      background: var(--accent-bg);
+      border-color: transparent;
+    }
+    34%, 100% {
+      color: var(--fg-faint);
+      background: transparent;
+      border-color: var(--line);
+    }
+  }
+
+  /* Без руху анімація зупиняється на найінформативнішому кадрі */
+  @media (prefers-reduced-motion: reduce) {
+    .shot { animation: none; width: 100%; height: 50%; }
+    .m { animation: none; }
+    .m1 { color: var(--accent-fg); background: var(--accent-bg); border-color: transparent; }
+  }
+</style>

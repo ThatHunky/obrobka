@@ -47,18 +47,69 @@ const jsonLd = {
 >
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
 
-  <article>
-    <h1>{d.h1}</h1>
-    <p>{d.intro}</p>
+  <article class="wrap narrow tool-page">
+    <header class="tool-head">
+      <span class="tag">{d.locale === 'uk' ? 'Працює у вашому браузері' : 'Runs in your browser'}</span>
+      <h1>{d.h1}</h1>
+      <p class="lede">{d.intro}</p>
+    </header>
 
     <Widget client:load preset={d.preset} />
 
-    <h2>{d.locale === 'uk' ? 'Як це зробити' : 'How to do it'}</h2>
-    <ol>{d.steps.map((s) => <li>{s}</li>)}</ol>
+    <section class="steps">
+      <h2>{d.locale === 'uk' ? 'Як це зробити' : 'How to do it'}</h2>
+      <ol>{d.steps.map((s) => <li>{s}</li>)}</ol>
+    </section>
 
-    <h2>{d.locale === 'uk' ? 'Часті питання' : 'Frequently asked questions'}</h2>
-    <dl>
-      {d.faq.map((f) => (<><dt>{f.q}</dt><dd>{f.a}</dd></>))}
-    </dl>
+    <section class="faq">
+      <h2>{d.locale === 'uk' ? 'Часті питання' : 'Frequently asked questions'}</h2>
+      <dl>
+        {d.faq.map((f) => (<><dt>{f.q}</dt><dd>{f.a}</dd></>))}
+      </dl>
+    </section>
   </article>
+
 </Base>
+
+<style>
+  .tool-page { display: grid; gap: clamp(2rem, 5vw, 3rem); }
+  .tool-head { display: grid; gap: 0.9rem; justify-items: start; }
+
+  .steps ol {
+    counter-reset: s;
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 0.8rem;
+    margin-top: 1rem;
+  }
+  .steps li {
+    counter-increment: s;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.9rem;
+    align-items: baseline;
+  }
+  .steps li::before {
+    content: counter(s);
+    display: grid;
+    place-items: center;
+    width: 1.9rem; height: 1.9rem;
+    border-radius: 50%;
+    background: var(--accent-bg);
+    color: var(--accent-fg);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+
+  .faq dl { margin-top: 1rem; display: grid; gap: 0.2rem; }
+  .faq dt {
+    font-weight: 600;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+  .faq dt:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+  .faq dd { margin: 0.3rem 0 0; color: var(--fg-muted); font-size: 0.95rem; }
+</style>

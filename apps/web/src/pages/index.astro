@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Widget from '../components/Widget.svelte';
+import HeroDemo from '../components/HeroDemo.astro';
 ---
 <Base
   title="obrobka — конвертер зображень у браузері"
@@ -9,7 +10,86 @@ import Widget from '../components/Widget.svelte';
   path="/"
   alternatePath="/en/"
 >
-  <h1>Обробка зображень у браузері</h1>
-  <p>Файли не залишають ваш пристрій — уся обробка відбувається локально.</p>
-  <Widget client:load />
+  <section class="wrap hero">
+    <div class="hero-copy">
+      <span class="tag">Нічого не завантажується на сервер</span>
+      <h1>Точний розмір.<br /><span class="hl">Жодного сервера.</span></h1>
+      <p class="lede">
+        Конвертуйте, обрізайте й приводьте зображення до потрібних пікселів
+        просто у вкладці. Обробка йде на вашому пристрої — файл нікуди не летить.
+      </p>
+      <ul class="facts">
+        <li><strong>PNG · JPEG · WebP · AVIF</strong></li>
+        <li><strong>5</strong> режимів приведення</li>
+        <li><strong>0</strong> байтів на сервер</li>
+      </ul>
+    </div>
+    <HeroDemo />
+  </section>
+
+  <section class="wrap tool">
+    <Widget client:load />
+  </section>
+
+  <section class="wrap narrow why">
+    <h2>Чому в браузері</h2>
+    <div class="why-grid">
+      <article>
+        <h3>Приватність за замовчуванням</h3>
+        <p>Обробка виконується кодом, який завантажився у вашу вкладку. Знімок паспорта чи фото дитини не потрапляє на чужий диск — просто тому, що нікуди не надсилається.</p>
+      </article>
+      <article>
+        <h3>Без черг і лімітів</h3>
+        <p>Немає сервера — немає обмежень на розмір файлу, кількість спроб чи очікування. Швидкість залежить лише від вашого пристрою.</p>
+      </article>
+      <article>
+        <h3>Працює офлайн</h3>
+        <p>Сторінка й кодеки кешуються. Один раз відкривши сайт, ви зможете обробляти зображення навіть без інтернету.</p>
+      </article>
+    </div>
+  </section>
 </Base>
+
+<style>
+  .hero {
+    display: grid;
+    gap: clamp(2rem, 5vw, 3.5rem);
+    align-items: center;
+    margin-bottom: clamp(2.5rem, 6vw, 4rem);
+  }
+  @media (min-width: 56rem) {
+    .hero { grid-template-columns: 1.15fr 0.85fr; }
+  }
+
+  .hero-copy { display: grid; gap: 1.1rem; justify-items: start; }
+
+  h1 .hl {
+    background: linear-gradient(105deg, var(--accent) 10%, var(--violet-400) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.6rem;
+    list-style: none;
+    padding: 0;
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
+    color: var(--fg-muted);
+  }
+  .facts strong {
+    font-family: var(--font-mono);
+    color: var(--fg);
+  }
+
+  .tool { margin-bottom: clamp(3rem, 8vw, 5rem); }
+
+  .why h2 { margin-bottom: 1.4rem; }
+  .why-grid { display: grid; gap: 1.6rem; }
+  @media (min-width: 46rem) { .why-grid { grid-template-columns: repeat(3, 1fr); } }
+  .why-grid h3 { margin-bottom: 0.4rem; }
+  .why-grid p { font-size: 0.92rem; color: var(--fg-muted); }
+</style>
