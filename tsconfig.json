@@ -5,6 +5,9 @@
       "path": "packages/core"
     },
     {
+      "path": "packages/models"
+    },
+    {
       "path": "packages/contract-tests"
     },
     {
@@ -12,6 +15,9 @@
     },
     {
       "path": "apps/mcp"
+    },
+    {
+      "path": "packages/segmenter-node"
     }
   ]
 }

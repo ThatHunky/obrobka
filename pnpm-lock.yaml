@@ -114,6 +114,31 @@ importers:
 
   packages/core: {}
 
+  packages/models:
+    dependencies:
+      '@obrobka/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/segmenter-node:
+    dependencies:
+      '@obrobka/core':
+        specifier: workspace:*
+        version: link:../core
+      '@obrobka/models':
+        specifier: workspace:*
+        version: link:../models
+      onnxruntime-node:
+        specifier: 1.27.0
+        version: 1.27.0
+    devDependencies:
+      '@obrobka/contract-tests':
+        specifier: workspace:*
+        version: link:../contract-tests
+      '@types/node':
+        specifier: 24.10.1
+        version: 24.10.1
+
 packages:
 
   '@astrojs/compiler-binding-darwin-arm64@0.3.2':
