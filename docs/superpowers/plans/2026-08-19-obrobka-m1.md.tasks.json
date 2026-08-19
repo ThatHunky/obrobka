@@ -1,0 +1,132 @@
+{
+  "planPath": "docs/superpowers/plans/2026-08-19-obrobka-m1.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Монорепозиторій і тулчейн",
+      "status": "pending",
+      "description": "**Goal:** Порожній, але робочий pnpm-workspace з TypeScript 7 і vitest, який збирається й проходить типізацію.\n\n**Files:**\n- `package.json`\n- `pnpm-workspace.yaml`\n- `tsconfig.base.json`\n- `.npmrc`\n- `vitest.config.ts`\n- `packages/core/package.json`\n- `packages/core/tsconfig.json`\n\n**Acceptance Criteria:**\n- [ ] pnpm install завершується без помилок\n- [ ] pnpm typecheck проходить на TypeScript 7\n- [ ] pnpm test запускає vitest без падіння\n- [ ] Node-версія зафіксована через engines і .nvmrc\n\n**Verify:** `pnpm install && pnpm typecheck && pnpm test`\n\n**Steps:** див. розділ «Task 0» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"package.json\", \"pnpm-workspace.yaml\", \"tsconfig.base.json\", \".npmrc\", \"vitest.config.ts\", \"packages/core/package.json\", \"packages/core/tsconfig.json\"], \"verifyCommand\": \"pnpm install && pnpm typecheck && pnpm test\", \"acceptanceCriteria\": [\"pnpm install завершується без помилок\", \"pnpm typecheck проходить на TypeScript 7\", \"pnpm test запускає vitest без падіння\", \"Node-версія зафіксована через engines і .nvmrc\"], \"modelTier\": \"mechanical\"}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: Типи ядра й тестові помічники",
+      "status": "pending",
+      "description": "**Goal:** Повний набір типів ядра плюс фабрики зображень, на яких будуються всі подальші тести.\n\n**Files:**\n- `packages/core/src/types.ts`\n- `packages/core/test/helpers.ts`\n- `packages/core/test/helpers.test.ts`\n- `packages/core/src/index.ts`\n\n**Acceptance Criteria:**\n- [ ] solidImage створює зображення, залите одним кольором\n- [ ] checkerImage створює шахівницю з клітинкою заданого розміру\n- [ ] pixelAt повертає RGBA пікселя за координатами\n- [ ] expectPixel кидає помилку з координатами при розбіжності\n\n**Verify:** `pnpm vitest run packages/core/test/helpers.test.ts`\n\n**Steps:** див. розділ «Task 1» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"packages/core/src/types.ts\", \"packages/core/test/helpers.ts\", \"packages/core/test/helpers.test.ts\", \"packages/core/src/index.ts\"], \"verifyCommand\": \"pnpm vitest run packages/core/test/helpers.test.ts\", \"acceptanceCriteria\": [\"solidImage створює зображення, залите одним кольором\", \"checkerImage створює шахівницю з клітинкою заданого розміру\", \"pixelAt повертає RGBA пікселя за координатами\", \"expectPixel кидає помилку з координатами при розбіжності\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Ресемплер із premultiplied alpha",
+      "status": "pending",
+      "description": "**Goal:** Коректна зміна роздільності RGBA, яка не затікає кольором у прозорі ділянки.\n\n**Files:**\n- `packages/core/src/ops/resample.ts`\n- `packages/core/test/resample.test.ts`\n- `packages/core/src/index.ts`\n\n**Acceptance Criteria:**\n- [ ] Збільшення 2x2 -> 4x4 дає білінійно інтерпольовані значення\n- [ ] Зменшення 4x4 -> 2x2 усереднює по площі\n- [ ] Однаковий розмір повертає копію, а не те саме посилання\n- [ ] Прозорий піксель поруч із непрозорим НЕ затемнює його\n- [ ] Зменшення шахівниці 100x100 -> 1x1 дає рівно середній колір\n\n**Verify:** `pnpm vitest run packages/core/test/resample.test.ts`\n\n**Steps:** див. розділ «Task 2» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"packages/core/src/ops/resample.ts\", \"packages/core/test/resample.test.ts\", \"packages/core/src/index.ts\"], \"verifyCommand\": \"pnpm vitest run packages/core/test/resample.test.ts\", \"acceptanceCriteria\": [\"Збільшення 2x2 -> 4x4 дає білінійно інтерпольовані значення\", \"Зменшення 4x4 -> 2x2 усереднює по площі\", \"Однаковий розмір повертає копію, а не те саме посилання\", \"Прозорий піксель поруч із непрозорим НЕ затемнює його\", \"Зменшення шахівниці 100x100 -> 1x1 дає рівно середній колір\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Обрізка за прямокутником",
+      "status": "pending",
+      "description": "**Goal:** Обрізка за прямокутником із обрізанням до меж зображення.\n\n**Files:**\n- `packages/core/src/ops/crop.ts`\n- `packages/core/test/crop.test.ts`\n- `packages/core/src/index.ts`\n\n**Acceptance Criteria:**\n- [ ] Обрізка всередині меж повертає точні пікселі\n- [ ] Прямокутник за межами обрізається до перетину\n- [ ] Порожній перетин кидає RangeError\n- [ ] Дробові координати округлюються до цілих\n\n**Verify:** `pnpm vitest run packages/core/test/crop.test.ts`\n\n**Steps:** див. розділ «Task 3» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"packages/core/src/ops/crop.ts\", \"packages/core/test/crop.test.ts\", \"packages/core/src/index.ts\"], \"verifyCommand\": \"pnpm vitest run packages/core/test/crop.test.ts\", \"acceptanceCriteria\": [\"Обрізка всередині меж повертає точні пікселі\", \"Прямокутник за межами обрізається до перетину\", \"Порожній перетин кидає RangeError\", \"Дробові координати округлюються до цілих\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        1
+      ]
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: П'ять режимів вписування",
+      "status": "pending",
+      "description": "**Goal:** П'ять режимів приведення до цільового розміру — головна операція проєкту.\n\n**Files:**\n- `packages/core/src/ops/fit.ts`\n- `packages/core/test/fit.test.ts`\n- `packages/core/src/index.ts`\n\n**Acceptance Criteria:**\n- [ ] contain дає рівно width x height із симетричними полями\n- [ ] Поля прозорі за замовчуванням, заданого кольору за запитом\n- [ ] cover дає рівно width x height без полів\n- [ ] fill розтягує, ігноруючи співвідношення\n- [ ] inside не збільшує без allowUpscale\n- [ ] position зміщує вміст у contain і вибирає ділянку в cover\n- [ ] Квадрат 200x200 у 512x512 contain дає рівно 156 px полів з кожного боку\n\n**Verify:** `pnpm vitest run packages/core/test/fit.test.ts`\n\n**Steps:** див. розділ «Task 4» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"packages/core/src/ops/fit.ts\", \"packages/core/test/fit.test.ts\", \"packages/core/src/index.ts\"], \"verifyCommand\": \"pnpm vitest run packages/core/test/fit.test.ts\", \"acceptanceCriteria\": [\"contain дає рівно width x height із симетричними полями\", \"Поля прозорі за замовчуванням, заданого кольору за запитом\", \"cover дає рівно width x height без полів\", \"fill розтягує, ігноруючи співвідношення\", \"inside не збільшує без allowUpscale\", \"position зміщує вміст у contain і вибирає ділянку в cover\", \"Квадрат 200x200 у 512x512 contain дає рівно 156 px полів з кожного боку\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Порти адаптерів і виконання Job",
+      "status": "pending",
+      "description": "**Goal:** Інтерфейси адаптерів і функція, що виконує серіалізований Job від байтів до байтів.\n\n**Files:**\n- `packages/core/src/ports/index.ts`\n- `packages/core/src/ops/pipeline.ts`\n- `packages/core/test/pipeline.test.ts`\n- `packages/core/src/index.ts`\n\n**Acceptance Criteria:**\n- [ ] runJob декодує, застосовує операції по черзі, кодує\n- [ ] Порожній список операцій = чиста переконвертація\n- [ ] Невідомий тип операції кидає помилку з назвою типу\n- [ ] Непідтримуваний формат кидає зрозумілу помилку\n\n**Verify:** `pnpm vitest run packages/core/test/pipeline.test.ts`\n\n**Steps:** див. розділ «Task 5» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"packages/core/src/ports/index.ts\", \"packages/core/src/ops/pipeline.ts\", \"packages/core/test/pipeline.test.ts\", \"packages/core/src/index.ts\"], \"verifyCommand\": \"pnpm vitest run packages/core/test/pipeline.test.ts\", \"acceptanceCriteria\": [\"runJob декодує, застосовує операції по черзі, кодує\", \"Порожній список операцій = чиста переконвертація\", \"Невідомий тип операції кидає помилку з назвою типу\", \"Непідтримуваний формат кидає зрозумілу помилку\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Кодек на jSquash",
+      "status": "pending",
+      "description": "**Goal:** Одна реалізація Codec на @jsquash/*, що працює і в Node, і в браузері.\n\n**Files:**\n- `packages/codecs/package.json`\n- `packages/codecs/tsconfig.json`\n- `packages/codecs/src/index.ts`\n- `packages/codecs/src/mime.ts`\n- `packages/codecs/test/mime.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Підтримка читання PNG, JPEG, WebP, AVIF\n- [ ] Підтримка запису PNG, JPEG, WebP, AVIF\n- [ ] sniffMime визначає формат за сигнатурою байтів, не за розширенням\n- [ ] Модулі WASM вантажаться ліниво через динамічний імпорт\n\n**Verify:** `pnpm vitest run packages/codecs/test/mime.test.ts`\n\n**Steps:** див. розділ «Task 6» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"packages/codecs/package.json\", \"packages/codecs/tsconfig.json\", \"packages/codecs/src/index.ts\", \"packages/codecs/src/mime.ts\", \"packages/codecs/test/mime.test.ts\"], \"verifyCommand\": \"pnpm vitest run packages/codecs/test/mime.test.ts\", \"acceptanceCriteria\": [\"Підтримка читання PNG, JPEG, WebP, AVIF\", \"Підтримка запису PNG, JPEG, WebP, AVIF\", \"sniffMime визначає формат за сигнатурою байтів, не за розширенням\", \"Модулі WASM вантажаться ліниво через динамічний імпорт\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        5
+      ]
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: Контрактні тести кодека",
+      "status": "pending",
+      "description": "**Goal:** Один набір тестів, що доводить: кодек справді робить круговий обіг байтів.\n\n**Files:**\n- `packages/contract-tests/package.json`\n- `packages/contract-tests/tsconfig.json`\n- `packages/contract-tests/src/codec.contract.ts`\n- `packages/codecs/test/codec.node.test.ts`\n\n**Acceptance Criteria:**\n- [ ] PNG кодується й декодується без втрат, піксель у піксель\n- [ ] Прозорість переживає обіг через PNG\n- [ ] JPEG-обіг зберігає розмір і приблизний колір\n- [ ] WebP і AVIF роблять обіг зі збереженням розміру\n- [ ] Набір параметризований і не залежить від конкретної реалізації\n\n**Verify:** `pnpm vitest run packages/codecs/test/codec.node.test.ts`\n\n**Steps:** див. розділ «Task 7» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"packages/contract-tests/package.json\", \"packages/contract-tests/tsconfig.json\", \"packages/contract-tests/src/codec.contract.ts\", \"packages/codecs/test/codec.node.test.ts\"], \"verifyCommand\": \"pnpm vitest run packages/codecs/test/codec.node.test.ts\", \"acceptanceCriteria\": [\"PNG кодується й декодується без втрат, піксель у піксель\", \"Прозорість переживає обіг через PNG\", \"JPEG-обіг зберігає розмір і приблизний колір\", \"WebP і AVIF роблять обіг зі збереженням розміру\", \"Набір параметризований і не залежить від конкретної реалізації\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        6
+      ]
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: MCP-сервер",
+      "status": "pending",
+      "description": "**Goal:** npx obrobka-mcp дає агентові два робочі інструменти поверх того самого ядра.\n\n**Files:**\n- `apps/mcp/package.json`\n- `apps/mcp/tsconfig.json`\n- `apps/mcp/src/io.ts`\n- `apps/mcp/src/tools.ts`\n- `apps/mcp/src/index.ts`\n- `apps/mcp/test/tools.test.ts`\n\n**Acceptance Criteria:**\n- [ ] convert_image змінює формат і якість, повертає структурований результат\n- [ ] resize_image приймає всі п'ять режимів і колір полів\n- [ ] Інструменти оперують шляхами до файлів, не base64\n- [ ] Неіснуючий вхідний файл дає зрозумілу помилку, а не стек\n- [ ] Сервер стартує на stdio й відповідає на tools/list\n\n**Verify:** `pnpm vitest run apps/mcp/test/tools.test.ts`\n\n**Steps:** див. розділ «Task 8» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"apps/mcp/package.json\", \"apps/mcp/tsconfig.json\", \"apps/mcp/src/io.ts\", \"apps/mcp/src/tools.ts\", \"apps/mcp/src/index.ts\", \"apps/mcp/test/tools.test.ts\"], \"verifyCommand\": \"pnpm vitest run apps/mcp/test/tools.test.ts\", \"acceptanceCriteria\": [\"convert_image змінює формат і якість, повертає структурований результат\", \"resize_image приймає всі п'ять режимів і колір полів\", \"Інструменти оперують шляхами до файлів, не base64\", \"Неіснуючий вхідний файл дає зрозумілу помилку, а не стек\", \"Сервер стартує на stdio й відповідає на tools/list\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        7
+      ]
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: Каркас Astro з i18n і PWA",
+      "status": "pending",
+      "description": "**Goal:** Статичний сайт, що збирається, віддає українську в корені й англійську з префіксом, із заголовками COOP/COEP.\n\n**Files:**\n- `apps/web/package.json`\n- `apps/web/tsconfig.json`\n- `apps/web/astro.config.mjs`\n- `apps/web/public/_headers`\n- `apps/web/src/layouts/Base.astro`\n- `apps/web/src/pages/index.astro`\n- `apps/web/src/pages/en/index.astro`\n- `apps/web/src/sw.ts`\n- `apps/web/test/build.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Збірка проходить без помилок\n- [ ] dist/index.html існує і має lang=uk\n- [ ] dist/en/index.html існує і має lang=en\n- [ ] Обидві сторінки містять взаємні hreflang і x-default\n- [ ] dist/_headers містить Cross-Origin-Embedder-Policy: credentialless\n\n**Verify:** `pnpm --filter @obrobka/web build && pnpm vitest run apps/web/test/build.test.ts`\n\n**Steps:** див. розділ «Task 9» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"apps/web/package.json\", \"apps/web/tsconfig.json\", \"apps/web/astro.config.mjs\", \"apps/web/public/_headers\", \"apps/web/src/layouts/Base.astro\", \"apps/web/src/pages/index.astro\", \"apps/web/src/pages/en/index.astro\", \"apps/web/src/sw.ts\", \"apps/web/test/build.test.ts\"], \"verifyCommand\": \"pnpm --filter @obrobka/web build && pnpm vitest run apps/web/test/build.test.ts\", \"acceptanceCriteria\": [\"Збірка проходить без помилок\", \"dist/index.html існує і має lang=uk\", \"dist/en/index.html існує і має lang=en\", \"Обидві сторінки містять взаємні hreflang і x-default\", \"dist/_headers містить Cross-Origin-Embedder-Policy: credentialless\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        0
+      ]
+    },
+    {
+      "id": 10,
+      "subject": "Task 10: Воркер обробки",
+      "status": "pending",
+      "description": "**Goal:** Обробка зображень поза головним потоком із типізованим фасадом Comlink.\n\n**Files:**\n- `apps/web/src/lib/worker.ts`\n- `apps/web/src/lib/worker-api.ts`\n- `apps/web/test/worker-api.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Воркер приймає байти й Job, повертає байти\n- [ ] Результат передається як transferable, без копіювання\n- [ ] Помилки воркера доходять як звичайні відхилення промісу\n- [ ] buildJob перетворює стан UI на серіалізований Job\n\n**Verify:** `pnpm vitest run apps/web/test/worker-api.test.ts`\n\n**Steps:** див. розділ «Task 10» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"apps/web/src/lib/worker.ts\", \"apps/web/src/lib/worker-api.ts\", \"apps/web/test/worker-api.test.ts\"], \"verifyCommand\": \"pnpm vitest run apps/web/test/worker-api.test.ts\", \"acceptanceCriteria\": [\"Воркер приймає байти й Job, повертає байти\", \"Результат передається як transferable, без копіювання\", \"Помилки воркера доходять як звичайні відхилення промісу\", \"buildJob перетворює стан UI на серіалізований Job\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        6,
+        9
+      ]
+    },
+    {
+      "id": 11,
+      "subject": "Task 11: Віджет обробки",
+      "status": "pending",
+      "description": "**Goal:** Робочий інтерфейс: вибір файлу, налаштування розміру, прев'ю, завантаження результату.\n\n**Files:**\n- `apps/web/src/components/Widget.svelte`\n- `apps/web/src/pages/index.astro`\n- `apps/web/e2e/widget.spec.ts`\n- `playwright.config.ts`\n\n**Acceptance Criteria:**\n- [ ] Прийом файлу через кнопку та через перетягування\n- [ ] Поля ширини й висоти, вибір режиму, вибір формату\n- [ ] Прев'ю результату з реальними розмірами\n- [ ] Кнопка завантаження віддає файл з осмисленим іменем\n- [ ] Пресети: стікер Telegram 512x512, аватар 400x400, OG-image 1200x630\n- [ ] Острівець вантажиться лише при client:visible\n- [ ] crossOriginIsolated дорівнює true\n\n**Verify:** `pnpm exec playwright test`\n\n**Steps:** див. розділ «Task 11» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"apps/web/src/components/Widget.svelte\", \"apps/web/src/pages/index.astro\", \"apps/web/e2e/widget.spec.ts\", \"playwright.config.ts\"], \"verifyCommand\": \"pnpm exec playwright test\", \"acceptanceCriteria\": [\"Прийом файлу через кнопку та через перетягування\", \"Поля ширини й висоти, вибір режиму, вибір формату\", \"Прев'ю результату з реальними розмірами\", \"Кнопка завантаження віддає файл з осмисленим іменем\", \"Пресети: стікер Telegram 512x512, аватар 400x400, OG-image 1200x630\", \"Острівець вантажиться лише при client:visible\", \"crossOriginIsolated дорівнює true\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        10
+      ]
+    },
+    {
+      "id": 12,
+      "subject": "Task 12: Шаблон SEO-лендінгу",
+      "status": "pending",
+      "description": "**Goal:** Один шаблон, керований даними, що перетворює YAML-запис на сторінку зі структурованою розміткою.\n\n**Files:**\n- `apps/web/src/content.config.ts`\n- `apps/web/src/data/tools/telegram-sticker.uk.yaml`\n- `apps/web/src/data/tools/telegram-sticker.en.yaml`\n- `apps/web/src/data/tools/resize-image.uk.yaml`\n- `apps/web/src/data/tools/resize-image.en.yaml`\n- `apps/web/src/layouts/Tool.astro`\n- `apps/web/src/pages/[...slug].astro`\n- `apps/web/src/components/Widget.svelte`\n- `apps/web/test/seo.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Кожен YAML-запис дає окрему сторінку\n- [ ] Сторінка містить FAQPage, HowTo та SoftwareApplication у JSON-LD\n- [ ] Український і англійський записи посилаються один на одного через hreflang\n- [ ] Пресет із YAML передається у віджет як початковий стан\n- [ ] Сторінка читабельна без JavaScript\n\n**Verify:** `pnpm --filter @obrobka/web build && pnpm vitest run apps/web/test/seo.test.ts`\n\n**Steps:** див. розділ «Task 12» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"apps/web/src/content.config.ts\", \"apps/web/src/data/tools/telegram-sticker.uk.yaml\", \"apps/web/src/data/tools/telegram-sticker.en.yaml\", \"apps/web/src/data/tools/resize-image.uk.yaml\", \"apps/web/src/data/tools/resize-image.en.yaml\", \"apps/web/src/layouts/Tool.astro\", \"apps/web/src/pages/[...slug].astro\", \"apps/web/src/components/Widget.svelte\", \"apps/web/test/seo.test.ts\"], \"verifyCommand\": \"pnpm --filter @obrobka/web build && pnpm vitest run apps/web/test/seo.test.ts\", \"acceptanceCriteria\": [\"Кожен YAML-запис дає окрему сторінку\", \"Сторінка містить FAQPage, HowTo та SoftwareApplication у JSON-LD\", \"Український і англійський записи посилаються один на одного через hreflang\", \"Пресет із YAML передається у віджет як початковий стан\", \"Сторінка читабельна без JavaScript\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        11
+      ]
+    },
+    {
+      "id": 13,
+      "subject": "Task 13: Деплой на Cloudflare Pages",
+      "status": "pending",
+      "description": "**Goal:** Сайт відкривається на obrobka.dobrovolskyi.com.ua і справді ізольований між походженнями.\n\n**Files:**\n- `docs/deploy.md`\n\n**Acceptance Criteria:**\n- [ ] Сайт відкривається на робочому домені по HTTPS\n- [ ] crossOriginIsolated дорівнює true у продакшні\n- [ ] _headers застосовано, перевірено через curl -I\n- [ ] Віджет обробляє зображення на живому сайті\n- [ ] Lighthouse: продуктивність і доступність не нижче 95\n\n**Verify:** `curl -sI https://obrobka.dobrovolskyi.com.ua | grep -i cross-origin`\n\n**Steps:** див. розділ «Task 13» у docs/superpowers/plans/2026-08-19-obrobka-m1.md\n\n```json:metadata\n{\"files\": [\"docs/deploy.md\"], \"verifyCommand\": \"curl -sI https://obrobka.dobrovolskyi.com.ua | grep -i cross-origin\", \"acceptanceCriteria\": [\"Сайт відкривається на робочому домені по HTTPS\", \"crossOriginIsolated дорівнює true у продакшні\", \"_headers застосовано, перевірено через curl -I\", \"Віджет обробляє зображення на живому сайті\", \"Lighthouse: продуктивність і доступність не нижче 95\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        8,
+        12
+      ]
+    }
+  ],
+  "lastUpdated": "2026-08-19T00:00:00Z"
+}
