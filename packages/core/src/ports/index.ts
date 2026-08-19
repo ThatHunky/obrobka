@@ -1,4 +1,4 @@
-import type { EncodeOptions, Mask, RasterImage } from '../types.js';
+import type { EncodeOptions, Mask, RasterImage, Tier } from '../types.js';
 
 export interface Codec {
   canDecode(mime: string): boolean;
@@ -40,4 +40,9 @@ export interface MetadataPort {
 export interface Context {
   readonly codec: Codec;
   readonly resampler?: Resampler;
+  /**
+   * Створює сегментатор потрібного рівня. Необов'язковий: операції M1
+   * працюють без нього, а операції з маскою дадуть зрозумілу помилку.
+   */
+  readonly segmenter?: (tier: Tier) => Segmenter;
 }

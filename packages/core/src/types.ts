@@ -84,7 +84,14 @@ export interface EncodeOptions {
 
 export type Op =
   | ({ readonly type: 'fit' } & FitOptions)
-  | { readonly type: 'crop'; readonly rect: Rect };
+  | { readonly type: 'crop'; readonly rect: Rect }
+  | {
+      readonly type: 'removeBackground';
+      readonly tier?: Tier;
+      readonly feather?: number;
+    }
+  | ({ readonly type: 'outline' } & OutlineOptions)
+  | ({ readonly type: 'smartCrop' } & SmartCropOptions);
 
 export interface Job {
   readonly ops: readonly Op[];

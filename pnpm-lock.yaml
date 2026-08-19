@@ -42,10 +42,16 @@ importers:
       '@obrobka/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@obrobka/segmenter-node':
+        specifier: workspace:*
+        version: link:../../packages/segmenter-node
       zod:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
+      '@obrobka/contract-tests':
+        specifier: workspace:*
+        version: link:../../packages/contract-tests
       '@types/node':
         specifier: 24.10.1
         version: 24.10.1

@@ -1,9 +1,24 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "src", "outDir": "dist", "types": ["node"] },
-  "include": ["src/**/*"],
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src/**/*"
+  ],
   "references": [
-    { "path": "../../packages/core" },
-    { "path": "../../packages/codecs" }
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/codecs"
+    },
+    {
+      "path": "../../packages/segmenter-node"
+    }
   ]
 }
