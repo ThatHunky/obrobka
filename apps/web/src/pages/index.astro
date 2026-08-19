@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import Widget from '../components/Widget.svelte';
 ---
 <Base
   title="obrobka — конвертер зображень у браузері"
@@ -9,5 +10,6 @@ import Base from '../layouts/Base.astro';
   alternatePath="/en/"
 >
   <h1>Обробка зображень у браузері</h1>
-  <p>Файли не залишають ваш пристрій.</p>
+  <p>Файли не залишають ваш пристрій — уся обробка відбувається локально.</p>
+  <Widget client:visible />
 </Base>

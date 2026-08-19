@@ -9,11 +9,13 @@
   "scripts": {
     "typecheck": "tsc --build --force",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "typescript": "7.0.2",
     "vitest": "4.1.11",
-    "@types/node": "24.10.1"
+    "@types/node": "24.10.1",
+    "@playwright/test": "1.62.1"
   }
 }
