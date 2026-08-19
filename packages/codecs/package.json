@@ -1,0 +1,32 @@
+{
+  "name": "@obrobka/codecs",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/browser.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@obrobka/core": "workspace:*",
+    "@jsquash/png": "3.1.1",
+    "@jsquash/jpeg": "1.6.0",
+    "@jsquash/webp": "1.5.0",
+    "@jsquash/avif": "2.1.1"
+  },
+  "devDependencies": {
+    "@obrobka/contract-tests": "workspace:*",
+    "@types/node": "24.10.1"
+  }
+}
