@@ -1,0 +1,29 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  locale: 'uk' | 'en';
+  path: string;
+  alternatePath: string;
+}
+const { title, description, locale, path, alternatePath } = Astro.props;
+const site = 'https://obrobka.dobrovolskyi.com.ua';
+const other = locale === 'uk' ? 'en' : 'uk';
+const defaultPath = locale === 'uk' ? path : alternatePath;
+---
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={`${site}${path}`} />
+    <link rel="alternate" hreflang={locale} href={`${site}${path}`} />
+    <link rel="alternate" hreflang={other} href={`${site}${alternatePath}`} />
+    <link rel="alternate" hreflang="x-default" href={`${site}${defaultPath}`} />
+  </head>
+  <body>
+    <main><slot /></main>
+  </body>
+</html>
