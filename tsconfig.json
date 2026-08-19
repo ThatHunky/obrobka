@@ -1,8 +1,17 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/core" },
-    { "path": "packages/contract-tests" },
-    { "path": "packages/codecs" }
+    {
+      "path": "packages/core"
+    },
+    {
+      "path": "packages/contract-tests"
+    },
+    {
+      "path": "packages/codecs"
+    },
+    {
+      "path": "apps/mcp"
+    }
   ]
 }

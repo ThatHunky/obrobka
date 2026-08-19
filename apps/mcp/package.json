@@ -1,0 +1,14 @@
+{
+  "name": "obrobka-mcp",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": { "obrobka-mcp": "./dist/index.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@obrobka/core": "workspace:*",
+    "@obrobka/codecs": "workspace:*",
+    "@modelcontextprotocol/server": "2.0.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": { "@types/node": "24.10.1" }
+}
