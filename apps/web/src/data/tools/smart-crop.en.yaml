@@ -1,0 +1,34 @@
+slug: smart-crop
+locale: en
+pair: smart-crop.uk
+title: >-
+  Smart image cropping online — framed on the subject, not the centre
+description: >-
+  Crops an image to the aspect ratio you need while keeping the main subject
+  in frame. Runs in your browser, nothing is uploaded.
+h1: Subject-aware cropping
+intro: >-
+  Plain cropping cuts through the centre and often clips a head or the edge of
+  a product. Here the frame is built around whatever the model identifies as
+  the main subject.
+preset:
+  width: 1080
+  height: 1080
+  mode: cover
+  format: png
+  padTransparent: true
+  removeBg: false
+  tier: fast
+steps:
+  - Pick an image
+  - Set the aspect ratio you need
+  - Download the frame built around the subject
+faq:
+  - q: Is the background removed?
+    a: >-
+      No. The model is only used to locate the subject; the crop is taken from
+      the original, background included.
+  - q: What happens with several objects?
+    a: >-
+      The frame covers all of them; the rectangle enclosing the whole detected
+      mask is used.

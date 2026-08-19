@@ -1,0 +1,37 @@
+slug: remove-background
+locale: en
+pair: remove-background.uk
+title: >-
+  Remove image background online — free, nothing is uploaded
+description: >-
+  Strip the background from an image right in your browser. Three models to
+  pick from: fast for any subject, portrait for people, precise for hard edges.
+h1: Background removal
+intro: >-
+  Processing happens in your tab — the photo is never sent to any server.
+  The result is saved as a PNG with a transparent background.
+preset:
+  width: 1024
+  height: 1024
+  mode: inside
+  format: png
+  padTransparent: true
+  removeBg: true
+  tier: fast
+steps:
+  - Pick an image, drag it in, or paste with Ctrl+V
+  - Turn on "Remove background" — the model downloads once and stays cached
+  - Switch the model tier if you need to, then download the PNG
+faq:
+  - q: How large is the model?
+    a: >-
+      Fast is 4.4 MB, portrait is 6.3 MB, precise is 84 MB. The first one
+      downloads once and is then served from your browser cache.
+  - q: Why does the portrait model fail on objects?
+    a: >-
+      MODNet was trained on people only. On a product or a logo it returns an
+      empty mask — use the fast or precise model for those subjects.
+  - q: Can I add an outline?
+    a: >-
+      Yes, turn on "Outline" and set width and colour. The canvas grows so the
+      outline is not clipped at the edge.

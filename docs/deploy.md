@@ -45,23 +45,48 @@ cross-origin-embedder-policy: credentialless
 pnpm exec playwright test --config playwright.prod.config.ts
 ```
 
+## Моделі на R2
+
+Живуть на `models.obrobka.dobrovolskyi.com.ua`, бакет `obrobka-models`.
+
+| Модель | Вага | Ліцензія |
+|---|---|---|
+| `u2netp.onnx` | 4,4 МБ | Apache-2.0 |
+| `modnet.onnx` | 6,3 МБ | Apache-2.0 |
+| `isnet-general.onnx` | 84,1 МБ | MIT |
+
+Публікація:
+
+```bash
+set -a; . ~/.config/cloudflare/env; set +a
+./scripts/publish-models.sh
+```
+
+**`--remote` обов'язковий.** Wrangler 4 за замовчуванням пише `r2 object put`
+у локальну симуляцію (miniflare), і справжній бакет лишається порожнім —
+без жодної помилки. Скрипт це враховує.
+
+Перевірка заголовків:
+
+```bash
+curl -sI https://models.obrobka.dobrovolskyi.com.ua/u2netp.onnx \
+  | grep -iE 'cross-origin-resource|access-control|cache-control'
+```
+
+Очікується `cross-origin-resource-policy: cross-origin` — **без нього наш
+власний COEP заблокує завантаження моделей**. Заголовок додається не
+бакетом, а Transform Rule на зоні `dobrovolskyi.com.ua`.
+
 ## Обмеження, про які треба пам'ятати
 
-**Cloudflare Pages не приймає файли понад 25 MiB.** Зараз найбільший
-ассет — 3,4 МБ (`avif_enc_mt.wasm`), запас великий.
+**Cloudflare Pages не приймає файли понад 25 MiB.** Найбільший ассет
+сайту — 3,4 МБ (`avif_enc_mt.wasm`). Моделі лежать на R2 саме тому, що
+`isnet-general` у цей ліміт не влазить.
 
-Але моделі з M2 у ліміт не влізуть:
-
-| Модель | Вага | Куди |
-|---|---|---|
-| MODNet uint8 | 6,3 МБ | Pages |
-| Swin2SR ×2 uint8 | 5,3 МБ | Pages |
-| ormbg int8 | 42,3 МБ | **R2** |
-| BiRefNet_lite fp16 | 109,2 МБ | **R2** |
-
-Для них знадобиться R2-бакет на `models.obrobka.dobrovolskyi.com.ua`
-з `Cross-Origin-Resource-Policy: cross-origin` — без цього заголовка
-завантаження заблокує COEP. Ключі R2 вже є в тому самому env-файлі.
+**BiRefNet_lite не використовується.** При 1024×1024 його вбив OOM-кілер
+на машині з 4,2 ГБ вільної пам'яті; у вкладці зі стелею wasm32 шансів
+менше. Повертатись до нього варто лише з WebGPU, де ваги лягають
+у пам'ять відеокарти.
 
 ## Версії, зафіксовані навмисно
 

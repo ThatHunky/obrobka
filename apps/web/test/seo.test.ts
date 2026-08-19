@@ -50,3 +50,31 @@ describe('сторінка інструмента', () => {
     expect(uk).toMatch(/width&quot;:\[0,512\]|&quot;width&quot;:\[0,512\]/);
   });
 });
+
+describe('сторінки видалення фону', () => {
+  it('українська сторінка згенерована', async () => {
+    const html = await readFile(join(dist, 'видалити-фон', 'index.html'), 'utf8');
+    expect(html).toContain('Видалення фону');
+    expect(html).toContain('hreflang="en"');
+  });
+
+  it('англійська пара на місці', async () => {
+    const html = await readFile(join(dist, 'en', 'remove-background', 'index.html'), 'utf8');
+    expect(html).toContain('Background removal');
+  });
+
+  it('сторінка розумної обрізки згенерована', async () => {
+    const html = await readFile(join(dist, 'розумна-обрізка', 'index.html'), 'utf8');
+    expect(html).toContain('Обрізка за суб');
+  });
+
+  it('пресет видалення фону доїхав у віджет', async () => {
+    const html = await readFile(join(dist, 'видалити-фон', 'index.html'), 'utf8');
+    expect(html).toMatch(/removeBg&quot;:\[\d+,true\]/);
+  });
+
+  it('sitemap містить усі десять сторінок', async () => {
+    const idx = await readFile(join(dist, 'sitemap-0.xml'), 'utf8');
+    expect((idx.match(/<loc>/g) ?? []).length).toBe(10);
+  });
+});
