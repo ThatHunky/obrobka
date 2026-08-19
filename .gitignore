@@ -8,6 +8,7 @@ models/*.onnx
 node_modules/
 playwright-report/
 shots/
+.specstory/
 test-results/
 *.tsbuildinfo
 .wrangler/

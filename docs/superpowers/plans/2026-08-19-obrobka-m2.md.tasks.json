@@ -1,0 +1,111 @@
+{
+  "planPath": "docs/superpowers/plans/2026-08-19-obrobka-m2.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Операції над маскою",
+      "status": "pending",
+      "description": "**Goal:** Чисті функції над одноканальною маскою — фундамент для всього іншого в M2.\n\n**Files:**\n- `packages/core/src/ops/mask.ts`\n- `packages/core/test/mask.test.ts`\n- `packages/core/src/index.ts`\n\n**Acceptance Criteria:**\n- [ ] maskBBox знаходить прямокутник суб'єкта за порогом\n- [ ] maskBBox кидає RangeError на порожній масці\n- [ ] resampleMask масштабує білінійно, без premultiply\n- [ ] dilateMask розширює область рівно на радіус\n- [ ] featherMask пом'якшує край, не зсуваючи центр\n\n**Verify:** `pnpm vitest run packages/core/test/mask.test.ts`\n\n**Steps:** див. розділ «Task 1» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"packages/core/src/ops/mask.ts\", \"packages/core/test/mask.test.ts\", \"packages/core/src/index.ts\"], \"verifyCommand\": \"pnpm vitest run packages/core/test/mask.test.ts\", \"acceptanceCriteria\": [\"maskBBox знаходить прямокутник суб'єкта за порогом\", \"maskBBox кидає RangeError на порожній масці\", \"resampleMask масштабує білінійно, без premultiply\", \"dilateMask розширює область рівно на радіус\", \"featherMask пом'якшує край, не зсуваючи центр\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Застосування маски, аутлайн і розумна обрізка",
+      "status": "pending",
+      "description": "**Goal:** Три операції, що перетворюють маску на видимий результат.\n\n**Files:**\n- `packages/core/src/ops/applyMask.ts`\n- `packages/core/src/ops/outline.ts`\n- `packages/core/src/ops/smartCrop.ts`\n- `packages/core/test/composite.test.ts`\n- `packages/core/src/types.ts`\n\n**Acceptance Criteria:**\n- [ ] applyMask множить альфу, не чіпаючи кольори\n- [ ] applyMask масштабує маску до розміру зображення\n- [ ] outline малює обведення ПІД суб'єктом\n- [ ] outline розширює полотно, коли обведення не влазить\n- [ ] smartCrop кадрує під співвідношення, тримаючи суб'єкт\n- [ ] smartCrop не виходить за межі зображення\n\n**Verify:** `pnpm vitest run packages/core/test/composite.test.ts`\n\n**Steps:** див. розділ «Task 2» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"packages/core/src/ops/applyMask.ts\", \"packages/core/src/ops/outline.ts\", \"packages/core/src/ops/smartCrop.ts\", \"packages/core/test/composite.test.ts\", \"packages/core/src/types.ts\"], \"verifyCommand\": \"pnpm vitest run packages/core/test/composite.test.ts\", \"acceptanceCriteria\": [\"applyMask множить альфу, не чіпаючи кольори\", \"applyMask масштабує маску до розміру зображення\", \"outline малює обведення ПІД суб'єктом\", \"outline розширює полотно, коли обведення не влазить\", \"smartCrop кадрує під співвідношення, тримаючи суб'єкт\", \"smartCrop не виходить за межі зображення\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Реєстр моделей і препроцесинг",
+      "status": "pending",
+      "description": "**Goal:** Описи трьох моделей і чисті перетворення між RasterImage і тензорами.\n\n**Files:**\n- `packages/models/package.json`\n- `packages/models/src/registry.ts`\n- `packages/models/src/preprocess.ts`\n- `packages/models/src/postprocess.ts`\n- `packages/models/test/preprocess.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Реєстр описує три моделі з URL, вагою, ліцензією й рецептом\n- [ ] preprocess дає Float32Array у форматі CHW\n- [ ] ImageNet-нормалізація застосовується покроково по каналах\n- [ ] Нормалізація 0.5/0.5 дає діапазон [-1, 1]\n- [ ] MODNet отримує розмір, кратний 32, з коротшою стороною 512\n- [ ] postprocess перетворює вихід на Mask 0..255\n\n**Verify:** `pnpm vitest run packages/models/test/preprocess.test.ts`\n\n**Steps:** див. розділ «Task 3» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"packages/models/package.json\", \"packages/models/src/registry.ts\", \"packages/models/src/preprocess.ts\", \"packages/models/src/postprocess.ts\", \"packages/models/test/preprocess.test.ts\"], \"verifyCommand\": \"pnpm vitest run packages/models/test/preprocess.test.ts\", \"acceptanceCriteria\": [\"Реєстр описує три моделі з URL, вагою, ліцензією й рецептом\", \"preprocess дає Float32Array у форматі CHW\", \"ImageNet-нормалізація застосовується покроково по каналах\", \"Нормалізація 0.5/0.5 дає діапазон [-1, 1]\", \"MODNet отримує розмір, кратний 32, з коротшою стороною 512\", \"postprocess перетворює вихід на Mask 0..255\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Сегментатор для Node",
+      "status": "pending",
+      "description": "**Goal:** Реалізація порту Segmenter на onnxruntime-node із кешем моделей на диску.\n\n**Files:**\n- `packages/segmenter-node/package.json`\n- `packages/segmenter-node/src/cache.ts`\n- `packages/segmenter-node/src/index.ts`\n- `packages/segmenter-node/test/segmenter.test.ts`\n\n**Acceptance Criteria:**\n- [ ] load завантажує модель і кешує в ~/.cache/obrobka/models/\n- [ ] Повторний load бере файл із кешу, без мережі\n- [ ] segment повертає Mask у роздільності входу моделі\n- [ ] Вихід береться за індексом, а не за іменем\n- [ ] dispose звільняє сесію\n- [ ] Обірване завантаження не лишає пошкоджений файл\n\n**Verify:** `pnpm vitest run packages/segmenter-node/test/segmenter.test.ts`\n\n**Steps:** див. розділ «Task 4» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"packages/segmenter-node/package.json\", \"packages/segmenter-node/src/cache.ts\", \"packages/segmenter-node/src/index.ts\", \"packages/segmenter-node/test/segmenter.test.ts\"], \"verifyCommand\": \"pnpm vitest run packages/segmenter-node/test/segmenter.test.ts\", \"acceptanceCriteria\": [\"load завантажує модель і кешує в ~/.cache/obrobka/models/\", \"Повторний load бере файл із кешу, без мережі\", \"segment повертає Mask у роздільності входу моделі\", \"Вихід береться за індексом, а не за іменем\", \"dispose звільняє сесію\", \"Обірване завантаження не лишає пошкоджений файл\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Розміщення моделей на R2",
+      "status": "pending",
+      "description": "**Goal:** Три моделі на models.obrobka.dobrovolskyi.com.ua із заголовками, які не заблокує COEP.\n\n**Files:**\n- `scripts/publish-models.sh`\n- `docs/deploy.md`\n\n**Acceptance Criteria:**\n- [ ] Бакет R2 створено й прив'язано до субдомену\n- [ ] Три файли доступні по HTTPS\n- [ ] Відповідь містить Cross-Origin-Resource-Policy: cross-origin\n- [ ] Відповідь містить Access-Control-Allow-Origin\n- [ ] Cache-Control дозволяє довічне кешування\n- [ ] Скрипт повторюваний і не перезаливає незмінене\n\n**Verify:** `curl -sI https://models.obrobka.dobrovolskyi.com.ua/u2netp.onnx | grep -iE 'cross-origin-resource|access-control'`\n\n**Steps:** див. розділ «Task 5» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"scripts/publish-models.sh\", \"docs/deploy.md\"], \"verifyCommand\": \"curl -sI https://models.obrobka.dobrovolskyi.com.ua/u2netp.onnx | grep -iE 'cross-origin-resource|access-control'\", \"acceptanceCriteria\": [\"Бакет R2 створено й прив'язано до субдомену\", \"Три файли доступні по HTTPS\", \"Відповідь містить Cross-Origin-Resource-Policy: cross-origin\", \"Відповідь містить Access-Control-Allow-Origin\", \"Cache-Control дозволяє довічне кешування\", \"Скрипт повторюваний і не перезаливає незмінене\"], \"modelTier\": \"mechanical\"}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Сегментатор для браузера",
+      "status": "pending",
+      "description": "**Goal:** Реалізація Segmenter на onnxruntime-web із кешем у Cache Storage і показом провайдера.\n\n**Files:**\n- `packages/segmenter-web/package.json`\n- `packages/segmenter-web/src/cache.ts`\n- `packages/segmenter-web/src/index.ts`\n\n**Acceptance Criteria:**\n- [ ] Модель кешується в Cache Storage і не качається вдруге\n- [ ] Прогрес завантаження повідомляється часткою 0..1\n- [ ] Провайдери пробуються по черзі: webgpu, потім wasm\n- [ ] Обраний провайдер доступний як властивість\n- [ ] env.wasm.proxy вимкнено — несумісний з WebGPU\n\n**Verify:** `pnpm typecheck`\n\n**Steps:** див. розділ «Task 6» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"packages/segmenter-web/package.json\", \"packages/segmenter-web/src/cache.ts\", \"packages/segmenter-web/src/index.ts\"], \"verifyCommand\": \"pnpm typecheck\", \"acceptanceCriteria\": [\"Модель кешується в Cache Storage і не качається вдруге\", \"Прогрес завантаження повідомляється часткою 0..1\", \"Провайдери пробуються по черзі: webgpu, потім wasm\", \"Обраний провайдер доступний як властивість\", \"env.wasm.proxy вимкнено — несумісний з WebGPU\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        3,
+        5
+      ]
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: Контрактні тести сегментатора",
+      "status": "pending",
+      "description": "**Goal:** Один набір тестів проти обох реалізацій — те, заради чого будувалась межа порту.\n\n**Files:**\n- `packages/contract-tests/src/segmenter.contract.ts`\n- `packages/segmenter-node/test/contract.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Контракт перевіряє форму маски, діапазон і знаходження суб'єкта\n- [ ] Контракт не залежить від конкретної реалізації\n- [ ] Node-адаптер проходить контракт для трьох рівнів\n- [ ] Портретна модель позначена окремо — з неї не вимагається неживих об'єктів\n\n**Verify:** `pnpm vitest run packages/segmenter-node/test/contract.test.ts`\n\n**Steps:** див. розділ «Task 7» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"packages/contract-tests/src/segmenter.contract.ts\", \"packages/segmenter-node/test/contract.test.ts\"], \"verifyCommand\": \"pnpm vitest run packages/segmenter-node/test/contract.test.ts\", \"acceptanceCriteria\": [\"Контракт перевіряє форму маски, діапазон і знаходження суб'єкта\", \"Контракт не залежить від конкретної реалізації\", \"Node-адаптер проходить контракт для трьох рівнів\", \"Портретна модель позначена окремо — з неї не вимагається неживих об'єктів\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        4,
+        6
+      ]
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: Операції M2 у пайплайні",
+      "status": "pending",
+      "description": "**Goal:** Job уміє описувати видалення фону, аутлайн і розумну обрізку.\n\n**Files:**\n- `packages/core/src/types.ts`\n- `packages/core/src/ops/pipeline.ts`\n- `packages/core/src/ports/index.ts`\n- `packages/core/test/pipeline-m2.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Op розширено трьома операціями\n- [ ] Context приймає необов'язкову фабрику сегментаторів\n- [ ] Маска рахується ОДИН раз на всі операції, що її потребують\n- [ ] Операція без сегментатора дає зрозумілу помилку\n- [ ] Порядок операцій зберігається\n\n**Verify:** `pnpm vitest run packages/core/test/pipeline-m2.test.ts`\n\n**Steps:** див. розділ «Task 8» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"packages/core/src/types.ts\", \"packages/core/src/ops/pipeline.ts\", \"packages/core/src/ports/index.ts\", \"packages/core/test/pipeline-m2.test.ts\"], \"verifyCommand\": \"pnpm vitest run packages/core/test/pipeline-m2.test.ts\", \"acceptanceCriteria\": [\"Op розширено трьома операціями\", \"Context приймає необов'язкову фабрику сегментаторів\", \"Маска рахується ОДИН раз на всі операції, що її потребують\", \"Операція без сегментатора дає зрозумілу помилку\", \"Порядок операцій зберігається\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        2,
+        4
+      ]
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: MCP-інструменти",
+      "status": "pending",
+      "description": "**Goal:** Агент уміє знімати фон, малювати обведення й кадрувати за суб'єктом.\n\n**Files:**\n- `apps/mcp/src/tools.ts`\n- `apps/mcp/src/index.ts`\n- `apps/mcp/test/segment-tools.test.ts`\n\n**Acceptance Criteria:**\n- [ ] remove_background знімає фон і пише PNG із прозорістю\n- [ ] remove_background приймає опційний аутлайн одним викликом\n- [ ] smart_crop кадрує під співвідношення за суб'єктом\n- [ ] Рівень моделі обирається параметром і описаний у схемі\n- [ ] JPEG відхиляється — він не має альфа-каналу\n\n**Verify:** `pnpm vitest run apps/mcp/test/segment-tools.test.ts`\n\n**Steps:** див. розділ «Task 9» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"apps/mcp/src/tools.ts\", \"apps/mcp/src/index.ts\", \"apps/mcp/test/segment-tools.test.ts\"], \"verifyCommand\": \"pnpm vitest run apps/mcp/test/segment-tools.test.ts\", \"acceptanceCriteria\": [\"remove_background знімає фон і пише PNG із прозорістю\", \"remove_background приймає опційний аутлайн одним викликом\", \"smart_crop кадрує під співвідношення за суб'єктом\", \"Рівень моделі обирається параметром і описаний у схемі\", \"JPEG відхиляється — він не має альфа-каналу\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        8
+      ]
+    },
+    {
+      "id": 10,
+      "subject": "Task 10: Інтерфейс",
+      "status": "pending",
+      "description": "**Goal:** Видалення фону у віджеті — з вибором рівня, чесним прогресом і показом провайдера.\n\n**Files:**\n- `apps/web/src/components/TierPicker.svelte`\n- `apps/web/src/components/Widget.svelte`\n- `apps/web/src/lib/worker.ts`\n- `apps/web/src/lib/worker-api.ts`\n- `apps/web/e2e/segment.spec.ts`\n\n**Acceptance Criteria:**\n- [ ] Перемикач «прибрати фон» вмикає операцію\n- [ ] Вибір рівня показує вагу моделі ДО завантаження\n- [ ] Прогрес завантаження видно у відсотках\n- [ ] Після першого завантаження модель береться з кешу\n- [ ] Обраний провайдер виконання показано користувачу\n- [ ] Аутлайн вмикається окремо, з товщиною й кольором\n- [ ] Формат перемикається на PNG, якщо обрано JPEG із видаленням фону\n\n**Verify:** `pnpm exec playwright test -g фон`\n\n**Steps:** див. розділ «Task 10» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"apps/web/src/components/TierPicker.svelte\", \"apps/web/src/components/Widget.svelte\", \"apps/web/src/lib/worker.ts\", \"apps/web/src/lib/worker-api.ts\", \"apps/web/e2e/segment.spec.ts\"], \"verifyCommand\": \"pnpm exec playwright test -g фон\", \"acceptanceCriteria\": [\"Перемикач «прибрати фон» вмикає операцію\", \"Вибір рівня показує вагу моделі ДО завантаження\", \"Прогрес завантаження видно у відсотках\", \"Після першого завантаження модель береться з кешу\", \"Обраний провайдер виконання показано користувачу\", \"Аутлайн вмикається окремо, з товщиною й кольором\", \"Формат перемикається на PNG, якщо обрано JPEG із видаленням фону\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        6,
+        8
+      ]
+    },
+    {
+      "id": 11,
+      "subject": "Task 11: Лендінги під нові задачі",
+      "status": "pending",
+      "description": "**Goal:** Чотири сторінки під запити, що з'явились разом із видаленням фону.\n\n**Files:**\n- `apps/web/src/data/tools/remove-background.uk.yaml`\n- `apps/web/src/data/tools/remove-background.en.yaml`\n- `apps/web/src/data/tools/smart-crop.uk.yaml`\n- `apps/web/src/data/tools/smart-crop.en.yaml`\n- `apps/web/src/content.config.ts`\n- `apps/web/test/seo.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Схема колекції приймає операції видалення фону в пресеті\n- [ ] Пресет доїжджає у віджет і вмикає перемикачі\n- [ ] Чотири нові сторінки збираються зі структурованою розміткою\n- [ ] Локалі посилаються одна на одну\n\n**Verify:** `pnpm --filter @obrobka/web build && pnpm vitest run apps/web/test/seo.test.ts`\n\n**Steps:** див. розділ «Task 11» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"apps/web/src/data/tools/remove-background.uk.yaml\", \"apps/web/src/data/tools/remove-background.en.yaml\", \"apps/web/src/data/tools/smart-crop.uk.yaml\", \"apps/web/src/data/tools/smart-crop.en.yaml\", \"apps/web/src/content.config.ts\", \"apps/web/test/seo.test.ts\"], \"verifyCommand\": \"pnpm --filter @obrobka/web build && pnpm vitest run apps/web/test/seo.test.ts\", \"acceptanceCriteria\": [\"Схема колекції приймає операції видалення фону в пресеті\", \"Пресет доїжджає у віджет і вмикає перемикачі\", \"Чотири нові сторінки збираються зі структурованою розміткою\", \"Локалі посилаються одна на одну\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        10
+      ]
+    },
+    {
+      "id": 12,
+      "subject": "Task 12: Деплой",
+      "status": "pending",
+      "description": "**Goal:** M2 живе на продакшні й перевірено на живому сайті.\n\n**Files:**\n- `docs/deploy.md`\n\n**Acceptance Criteria:**\n- [ ] Три моделі доступні з R2 по HTTPS\n- [ ] Видалення фону працює на живому сайті\n- [ ] Модель кешується — друге завантаження не качає її знову\n- [ ] Сторінка лишається crossOriginIsolated\n- [ ] Усі десять сторінок віддають 200\n\n**Verify:** `pnpm exec playwright test --config playwright.prod.config.ts`\n\n**Steps:** див. розділ «Task 12» у docs/superpowers/plans/2026-08-19-obrobka-m2.md\n\n```json:metadata\n{\"files\": [\"docs/deploy.md\"], \"verifyCommand\": \"pnpm exec playwright test --config playwright.prod.config.ts\", \"acceptanceCriteria\": [\"Три моделі доступні з R2 по HTTPS\", \"Видалення фону працює на живому сайті\", \"Модель кешується — друге завантаження не качає її знову\", \"Сторінка лишається crossOriginIsolated\", \"Усі десять сторінок віддають 200\"], \"modelTier\": \"standard\"}\n```",
+      "blockedBy": [
+        5,
+        9,
+        11
+      ]
+    }
+  ],
+  "lastUpdated": "2026-08-19T00:00:00Z"
+}
