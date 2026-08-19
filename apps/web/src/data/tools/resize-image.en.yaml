@@ -1,0 +1,23 @@
+slug: resize-image
+locale: en
+pair: resize-image.uk
+title: Resize an image online — exact pixels, aspect ratio kept
+description: >-
+  Set an exact width and height. Five fitting modes: contain with padding, cover with cropping, stretch. Runs entirely in your browser.
+h1: Image resizing
+intro: Set the exact width and height in pixels, then choose how the image should sit inside that frame.
+preset:
+  width: 1920
+  height: 1080
+  mode: contain
+  format: png
+  padTransparent: true
+steps:
+  - Pick an image
+  - Enter the width and height you need
+  - Choose a fitting mode and download the result
+faq:
+  - q: What is the difference between contain and cover?
+    a: Contain shows the whole image and fills the rest of the frame with padding. Cover fills the entire frame with no padding, but crops whatever does not fit.
+  - q: Can I enlarge a small image?
+    a: Yes, enable "Allow upscaling". It does not add real detail, so the result will look softer than the original.

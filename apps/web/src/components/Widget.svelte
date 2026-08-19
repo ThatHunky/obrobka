@@ -34,6 +34,14 @@
   let busy = $state(false);
   let error = $state('');
   let dragging = $state(false);
+  /**
+   * До гідратації острівця обробник change ще не навішений: користувач може
+   * вибрати файл і не отримати нічого. Тому в SSR-розмітці контроли вимкнені,
+   * а вмикаються після монтування.
+   */
+  let ready = $state(false);
+  $effect(() => { ready = true; });
+
   let sourceBytes: Uint8Array | null = null;
   let sourceMime = '';
 
@@ -90,10 +98,12 @@
   ondrop={onDrop}
 >
   <label class="pick">
-    Обрати зображення
+    {ready ? 'Обрати зображення' : 'Готуємо інструмент…'}
     <input
       type="file"
       accept="image/png,image/jpeg,image/webp,image/avif"
+      disabled={!ready}
+      data-ready={ready}
       onchange={(e) => {
         const f = e.currentTarget.files?.[0];
         if (f !== undefined) void accept(f);
@@ -104,7 +114,7 @@
 
   <div class="presets">
     {#each presets as p (p.label)}
-      <button type="button" onclick={() => applyPreset(p)}>{p.label}</button>
+      <button type="button" disabled={!ready} onclick={() => applyPreset(p)}>{p.label}</button>
     {/each}
   </div>
 

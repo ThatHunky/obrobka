@@ -1,7 +1,20 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { join } from 'node:path';
 
 const FIXTURE = join(import.meta.dirname, 'fixture.png');
+
+/**
+ * Острівець гідратується за client:visible, тож до готовності обробник
+ * change ще не навішений. Віджет позначає це атрибутом data-ready —
+ * чекаємо на нього, інакше подія летить у порожнечу.
+ */
+async function openWithFile(page: Page): Promise<void> {
+  await page.goto('/');
+  await expect(page.locator('input[type=file][data-ready="true"]')).toBeAttached({
+    timeout: 60_000,
+  });
+  await page.setInputFiles('input[type=file]', FIXTURE);
+}
 
 test('сторінка ізольована між походженнями', async ({ page }) => {
   await page.goto('/');
@@ -9,8 +22,7 @@ test('сторінка ізольована між походженнями', as
 });
 
 test('віджет приводить зображення до 512×512', async ({ page }) => {
-  await page.goto('/');
-  await page.setInputFiles('input[type=file]', FIXTURE);
+  await openWithFile(page);
 
   const img = page.getByTestId('result');
   await expect(img).toBeVisible({ timeout: 30_000 });
@@ -27,8 +39,7 @@ test('віджет приводить зображення до 512×512', async
 });
 
 test('пресет аватара дає 400×400 у режимі cover', async ({ page }) => {
-  await page.goto('/');
-  await page.setInputFiles('input[type=file]', FIXTURE);
+  await openWithFile(page);
   await expect(page.getByTestId('result')).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole('button', { name: 'Аватар 400×400' }).click();
@@ -40,8 +51,7 @@ test('пресет аватара дає 400×400 у режимі cover', async 
 });
 
 test("кнопка завантаження має осмислене ім'я файлу", async ({ page }) => {
-  await page.goto('/');
-  await page.setInputFiles('input[type=file]', FIXTURE);
+  await openWithFile(page);
   const link = page.getByTestId('download');
   await expect(link).toBeVisible({ timeout: 30_000 });
   await expect(link).toHaveAttribute('download', 'fixture-512x512.png');

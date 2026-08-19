@@ -1,0 +1,25 @@
+---
+import { getCollection } from 'astro:content';
+import Tool from '../layouts/Tool.astro';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('tools');
+  const byId = new Map(entries.map((e) => [e.id, e]));
+  return entries.map((entry) => {
+    const pair = byId.get(entry.data.pair);
+    if (pair === undefined) {
+      throw new Error(
+        `Запис ${entry.id} посилається на неіснуючу пару ${entry.data.pair}`,
+      );
+    }
+    const prefix = entry.data.locale === 'uk' ? '' : 'en/';
+    return {
+      params: { slug: `${prefix}${entry.data.slug}` },
+      props: { entry, pairSlug: pair.data.slug },
+    };
+  });
+}
+
+const { entry, pairSlug } = Astro.props;
+---
+<Tool entry={entry} pairSlug={pairSlug} />

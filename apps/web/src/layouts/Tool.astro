@@ -1,0 +1,64 @@
+---
+import Base from './Base.astro';
+import Widget from '../components/Widget.svelte';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props { entry: CollectionEntry<'tools'>; pairSlug: string }
+const { entry, pairSlug } = Astro.props;
+const d = entry.data;
+
+const path = d.locale === 'uk' ? `/${d.slug}/` : `/en/${d.slug}/`;
+const alternatePath = d.locale === 'uk' ? `/en/${pairSlug}/` : `/${pairSlug}/`;
+const site = 'https://obrobka.dobrovolskyi.com.ua';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareApplication',
+      name: 'obrobka',
+      applicationCategory: 'MultimediaApplication',
+      operatingSystem: 'Any',
+      url: `${site}${path}`,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'UAH' },
+    },
+    {
+      '@type': 'HowTo',
+      name: d.h1,
+      step: d.steps.map((text, i) => ({ '@type': 'HowToStep', position: i + 1, text })),
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: d.faq.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    },
+  ],
+};
+---
+<Base
+  title={d.title}
+  description={d.description}
+  locale={d.locale}
+  path={path}
+  alternatePath={alternatePath}
+>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+
+  <article>
+    <h1>{d.h1}</h1>
+    <p>{d.intro}</p>
+
+    <Widget client:load preset={d.preset} />
+
+    <h2>{d.locale === 'uk' ? 'Як це зробити' : 'How to do it'}</h2>
+    <ol>{d.steps.map((s) => <li>{s}</li>)}</ol>
+
+    <h2>{d.locale === 'uk' ? 'Часті питання' : 'Frequently asked questions'}</h2>
+    <dl>
+      {d.faq.map((f) => (<><dt>{f.q}</dt><dd>{f.a}</dd></>))}
+    </dl>
+  </article>
+</Base>

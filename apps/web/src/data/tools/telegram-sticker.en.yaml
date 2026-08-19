@@ -1,0 +1,25 @@
+slug: telegram-sticker
+locale: en
+pair: telegram-sticker.uk
+title: Make a Telegram sticker — 512×512 PNG online, free
+description: >-
+  Turn any image into a Telegram sticker: 512×512 PNG with a transparent background. Runs in your browser; the file never leaves your device.
+h1: Telegram sticker from any image
+intro: Telegram requires stickers to be PNG files of exactly 512×512 pixels. This tool resizes any image to fit, preserving aspect ratio and transparency.
+preset:
+  width: 512
+  height: 512
+  mode: contain
+  format: png
+  padTransparent: true
+steps:
+  - Pick an image or drag it into the window
+  - Click the "Telegram sticker 512×512" preset
+  - Download the finished PNG
+faq:
+  - q: Is transparency preserved?
+    a: Yes. Padding stays fully transparent, and the PNG output format supports an alpha channel.
+  - q: Is my photo uploaded to a server?
+    a: No. All processing happens in your browser; the file is never sent anywhere.
+  - q: What if my image is smaller than 512 pixels?
+    a: Enable "Allow upscaling". Quality will suffer, so a larger original is always better.
