@@ -1,0 +1,43 @@
+slug: heic-to-jpg
+locale: en
+pair: heic-to-jpg.uk
+title: >-
+  Convert HEIC to JPG online — right in the tab, nothing uploaded
+description: >-
+  Open an iPhone HEIC photo and save it as JPG, PNG or WebP. Portrait shots
+  do not come out sideways — the orientation tag is applied for you.
+h1: HEIC to JPG
+intro: >-
+  The iPhone shoots HEIC, and half the software out there will not open it.
+  Here it is decoded inside your tab by libheif — the photo is never sent
+  anywhere. Drop twenty files at once and take a ZIP.
+preset:
+  width: 20000
+  height: 20000
+  mode: inside
+  format: jpeg
+  padTransparent: false
+steps:
+  - Pick your HEIC files or drag them in — several at a time is fine
+  - The format is already set to JPEG; adjust the quality if you want
+  - Take the finished file, or a ZIP if you dropped a batch
+faq:
+  - q: Why do phone photos sometimes come out sideways?
+    a: >-
+      Because in JPEG and HEIC the orientation lives in a separate tag rather
+      than in the pixels. Here that tag is read and applied before anything
+      else, so a portrait shot stays portrait.
+  - q: Does the resolution change?
+    a: >-
+      No. The preset uses "inside" with a bound larger than any photo and
+      upscaling off, so the image passes through at its own resolution.
+  - q: What happens to the GPS coordinates?
+    a: >-
+      They are not carried over. The image is redrawn from pixels and every
+      piece of metadata stays behind in the input file. The panel under the
+      result shows exactly what was in there.
+  - q: Why is HEIC loaded separately?
+    a: >-
+      The libheif decoder weighs 1.46 MB. There is no reason to ship it to
+      someone who came to resize a PNG, so it downloads only once you
+      actually open a HEIC.

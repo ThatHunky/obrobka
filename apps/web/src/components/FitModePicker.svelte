@@ -34,6 +34,7 @@
         class:on={value === o.id}
         aria-pressed={value === o.id}
         title={o.hint}
+        data-testid={`fit-${o.id}`}
         onclick={() => pick(o.id)}
       >
         <svg viewBox="0 0 44 44" aria-hidden="true">

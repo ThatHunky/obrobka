@@ -1,9 +1,18 @@
 import * as Comlink from 'comlink';
 import { runJob, type Job, type Mask, type RasterImage, type Tier } from '@obrobka/core';
+import { withDecoder } from '@obrobka/codecs';
 import { browserCodec } from '@obrobka/codecs/browser';
+import { decodeHeic } from '@obrobka/heic';
+import { readMetadata, readOrientation, type Metadata } from '@obrobka/metadata';
 import {
   createSegmenter, createUpscaler, type Provider, type WebSegmenterApi,
 } from '@obrobka/onnx-web';
+
+/**
+ * HEIC під'єднано збоку: libheif важить 1,46 МБ і ліцензований під LGPL,
+ * тож вантажиться динамічно й лише тоді, коли такий файл справді відкрили.
+ */
+const codec = withDecoder(browserCodec, 'image/heic', decodeHeic);
 
 let lastProvider: Provider | null = null;
 
@@ -20,7 +29,8 @@ function segmenterFor(tier: Tier): WebSegmenterApi {
 }
 
 const ctx = {
-  codec: browserCodec,
+  codec,
+  metadata: { readOrientation },
   segmenter: (tier: Tier) => {
     const s = segmenterFor(tier);
     // Пайплайн викликає dispose після кожного Job, а нам треба тримати
@@ -77,6 +87,36 @@ const api = {
     await u.load(onProgress);
     lastProvider = u.provider ?? lastProvider;
     return u.provider;
+  },
+
+  /** Читає метадані. Панель EXIF питає це один раз на файл. */
+  async metadata(bytes: ArrayBuffer): Promise<Metadata> {
+    return readMetadata(new Uint8Array(bytes));
+  },
+
+  /**
+   * Зменшена копія для показу «Було».
+   *
+   * Потрібна лише для HEIC: браузер такий blob у теґу `<img>` не покаже
+   * (крім Safari), тож картинку доводиться перемалювати в те, що покаже
+   * будь-хто. Для решти форматів прев'ю не будується — там працює
+   * прямий objectURL, і це і швидше, і точніше.
+   */
+  async preview(
+    bytes: ArrayBuffer, mime: string, maxSide: number,
+  ): Promise<{ buf: ArrayBuffer; width: number; height: number }> {
+    const source = new Uint8Array(bytes);
+    const out = await runJob(source, mime, {
+      ops: [{ type: 'fit', width: maxSide, height: maxSide, mode: 'inside' }],
+      output: { format: 'webp', quality: 82 },
+    }, ctx);
+    const decoded = await codec.decode(out, 'image/webp');
+    const copy = new Uint8Array(out.length);
+    copy.set(out);
+    return Comlink.transfer(
+      { buf: copy.buffer, width: decoded.width, height: decoded.height },
+      [copy.buffer],
+    );
   },
 
   /** Прогрів моделі з прогресом — щоб інтерфейс не мовчав під час завантаження. */

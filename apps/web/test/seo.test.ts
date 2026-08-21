@@ -73,8 +73,31 @@ describe('сторінки видалення фону', () => {
     expect(html).toMatch(/removeBg&quot;:\[\d+,true\]/);
   });
 
-  it('sitemap містить усі десять сторінок', async () => {
+  it('у sitemap рівно стільки сторінок, скільки їх є', async () => {
+    // Очікування рахується з даних, а не вписане числом: інакше кожен
+    // новий лендінг «ламав» би тест, і його правили б, не дивлячись,
+    // що саме змінилось. Так тест ловить те, що має, — зниклу сторінку.
+    const { readdir } = await import('node:fs/promises');
+    const landings = (await readdir(join(import.meta.dirname, '..', 'src', 'data', 'tools')))
+      .filter((f) => f.endsWith('.yaml')).length;
+    const indexes = 2; // головна українською та англійською
+
     const idx = await readFile(join(dist, 'sitemap-0.xml'), 'utf8');
-    expect((idx.match(/<loc>/g) ?? []).length).toBe(10);
+    expect((idx.match(/<loc>/g) ?? []).length).toBe(landings + indexes);
+  });
+
+  it('нові сторінки M3 у sitemap', async () => {
+    const idx = await readFile(join(dist, 'sitemap-0.xml'), 'utf8');
+    expect(idx).toContain('/en/heic-to-jpg/');
+    expect(idx).toContain('/en/strip-exif/');
+  });
+
+  it('пресет «без зміни розміру» справді не змінює розмір', async () => {
+    // inside із межею, більшою за будь-яке фото, і без дозволу збільшувати —
+    // масштаб затискається до одиниці, а resample має швидкий шлях на
+    // однаковому розмірі. Це і є «конвертувати, не чіпаючи пікселів».
+    const html = await readFile(join(dist, 'heic-в-jpg', 'index.html'), 'utf8');
+    expect(html).toMatch(/mode&quot;:\[\d+,&quot;inside&quot;\]/);
+    expect(html).toMatch(/width&quot;:\[\d+,20000\]/);
   });
 });

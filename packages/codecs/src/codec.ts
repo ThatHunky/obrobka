@@ -1,8 +1,16 @@
 import type { Codec, EncodeOptions, OutputFormat, RasterImage } from '@obrobka/core';
-import type { SupportedMime } from './mime.js';
-import { decodeSlot, encodeSlot, loadSlot, type InitStrategy } from './modules.js';
+import {
+  decodeSlot, encodeSlot, loadSlot, type InitStrategy, type JsquashMime,
+} from './modules.js';
 
-const DECODABLE: readonly string[] = ['image/png', 'image/jpeg', 'image/webp', 'image/avif'];
+const DECODABLE: readonly JsquashMime[] = [
+  'image/png', 'image/jpeg', 'image/webp', 'image/avif',
+];
+
+function isDecodable(mime: string): mime is JsquashMime {
+  return (DECODABLE as readonly string[]).includes(mime);
+}
+
 const ENCODABLE: readonly OutputFormat[] = ['png', 'jpeg', 'webp', 'avif'];
 
 /** ImageData, як його очікують модулі jSquash. */
@@ -52,14 +60,14 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
  */
 export function createCodec(init: InitStrategy): Codec {
   return {
-    canDecode: (mime) => DECODABLE.includes(mime),
+    canDecode: isDecodable,
     canEncode: (format) => ENCODABLE.includes(format),
 
     async decode(bytes: Uint8Array, mime: string): Promise<RasterImage> {
-      if (!DECODABLE.includes(mime)) {
+      if (!isDecodable(mime)) {
         throw new Error(`Формат ${mime} не підтримується для читання`);
       }
-      const mod = await loadSlot(decodeSlot(mime as SupportedMime), init);
+      const mod = await loadSlot(decodeSlot(mime), init);
       const result = await (mod.default as unknown as Decode8Bit)(toArrayBuffer(bytes));
       if (result === null) {
         throw new Error(`Не вдалося декодувати зображення ${mime} — дані пошкоджені`);

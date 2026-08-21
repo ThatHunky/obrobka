@@ -1,5 +1,6 @@
 import * as Comlink from 'comlink';
 import type { FitMode, Job, Op, OutputFormat, Position, RGBA, Tier } from '@obrobka/core';
+import type { Metadata } from '@obrobka/metadata';
 
 export type Provider = 'webgpu' | 'wasm';
 
@@ -114,19 +115,37 @@ export interface WorkerApi {
     bytes: ArrayBuffer, mime: string, job: Job,
     onTile?: (p: TileProgress) => void,
   ): Promise<ArrayBuffer>;
+  metadata(bytes: ArrayBuffer): Promise<Metadata>;
+  preview(
+    bytes: ArrayBuffer, mime: string, maxSide: number,
+  ): Promise<{ buf: ArrayBuffer; width: number; height: number }>;
   warmUp(tier: Tier, onProgress: (fraction: number) => void): Promise<Provider | null>;
   warmUpUpscaler(
     factor: 2 | 4, onProgress: (fraction: number) => void,
   ): Promise<Provider | null>;
 }
 
-let cached: Comlink.Remote<WorkerApi> | null = null;
+const workers: Comlink.Remote<WorkerApi>[] = [];
+
+function spawn(): Comlink.Remote<WorkerApi> {
+  const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+  return Comlink.wrap<WorkerApi>(worker);
+}
 
 /** Створює воркер один раз і перевикористовує його. */
 export function getWorker(): Comlink.Remote<WorkerApi> {
-  if (cached === null) {
-    const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
-    cached = Comlink.wrap<WorkerApi>(worker);
-  }
-  return cached;
+  return getWorkerSlot(0);
+}
+
+/**
+ * Воркер під конкретний слот пулу.
+ *
+ * Пул росте на вимогу й ніколи не зменшується: кожен воркер тримає
+ * скомпільовані модулі WASM, і закривати його, щоб за хвилину відкрити
+ * знову, означало б платити за компіляцію двічі. Слот нуль — той самий
+ * воркер, яким користується одиночна обробка.
+ */
+export function getWorkerSlot(slot: number): Comlink.Remote<WorkerApi> {
+  while (workers.length <= slot) workers.push(spawn());
+  return workers[slot]!;
 }

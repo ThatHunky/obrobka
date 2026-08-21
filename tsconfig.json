@@ -21,6 +21,12 @@
     },
     {
       "path": "packages/onnx-web"
+    },
+    {
+      "path": "packages/metadata"
+    },
+    {
+      "path": "packages/heic"
     }
   ]
 }

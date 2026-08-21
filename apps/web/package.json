@@ -17,7 +17,10 @@
     "@obrobka/onnx-web": "workspace:*",
     "astro": "7.2.3",
     "comlink": "4.4.2",
-    "svelte": "5.56.9"
+    "fflate": "0.8.3",
+    "svelte": "5.56.9",
+    "@obrobka/heic": "workspace:*",
+    "@obrobka/metadata": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.10.1"

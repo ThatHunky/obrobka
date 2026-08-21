@@ -1,0 +1,27 @@
+{
+  // Перевірка типів для тестів.
+  //
+  // Проєкти пакетів навмисно збирають лише src: інакше dist тягнув би за
+  // собою тестові файли. Через це тести довго лишалися поза перевіркою —
+  // і саме там у M4 знайшовся справжній баг. Ця конфігурація закриває
+  // діру: вона нічого не збирає, лише перевіряє.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": [
+    // Оголошення для модулів без типів живуть поруч із кодом і не
+    // імпортуються явно — без цього рядка вони сюди не потраплять.
+    "packages/*/src/**/*.d.ts",
+    "packages/*/test/**/*.ts",
+    "apps/mcp/test/**/*.ts",
+    "apps/web/e2e/**/*.ts",
+    "scripts/*.d.mts"
+  ]
+}

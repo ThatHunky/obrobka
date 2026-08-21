@@ -25,7 +25,7 @@ steps:
 faq:
   - q: How large is the model?
     a: >-
-      Fast is 4.4 MB, portrait is 6.3 MB, precise is 84 MB. The first one
+      Fast is 4.4 MB, portrait is 12.4 MB, precise is 84 MB. The first one
       downloads once and is then served from your browser cache.
   - q: Why does the portrait model fail on objects?
     a: >-

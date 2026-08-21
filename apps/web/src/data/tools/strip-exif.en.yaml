@@ -1,0 +1,43 @@
+slug: strip-exif
+locale: en
+pair: strip-exif.uk
+title: >-
+  Remove EXIF and GPS from a photo online — without uploading it anywhere
+description: >-
+  See what your shot carries — camera, date, coordinates — and save a copy
+  with none of it. Everything happens inside your tab.
+h1: Strip metadata from a photo
+intro: >-
+  A phone photo usually carries the camera model, the time it was taken and
+  a point on the map. The panel under the result shows exactly what is in
+  there, and the result itself carries none of it — the image is redrawn
+  from scratch.
+preset:
+  width: 20000
+  height: 20000
+  mode: inside
+  format: jpeg
+  padTransparent: false
+steps:
+  - Pick a photo — a list of what it records appears under the result
+  - Check whether coordinates are there; they are called out separately
+  - Download the result — the metadata is already gone
+faq:
+  - q: How do I know the data is really gone?
+    a: >-
+      It was measured: starting from a file carrying Kyiv coordinates, after
+      re-encoding exifr finds no GPS, no camera model and no date — in JPEG,
+      PNG, WebP or AVIF alike.
+  - q: Does quality suffer?
+    a: >-
+      The image is re-encoded, so for JPEG pick a high quality. If you need
+      the metadata gone without touching a single pixel, the strip_metadata
+      MCP tool does exactly that, at the byte level.
+  - q: What about the colour profile?
+    a: >-
+      An ICC profile is not data about you — it describes how to show the
+      colours. The byte-level strip keeps it; re-encoding normalises the
+      colours to ordinary sRGB.
+  - q: Can I do many files at once?
+    a: >-
+      Yes. Pick several and the batch mode kicks in, giving you a ZIP.

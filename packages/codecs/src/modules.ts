@@ -1,5 +1,12 @@
 import type { OutputFormat } from '@obrobka/core';
-import type { SupportedMime } from './mime.js';
+
+/**
+ * Ті mime, які вміє сам jSquash.
+ *
+ * Вужче за SupportedMime: HEIC теж підтримується проєктом, але приходить
+ * окремим декодером через withDecoder, а не слотом jSquash.
+ */
+export type JsquashMime = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/avif';
 
 /** Один завантажуваний модуль jSquash: формат плюс напрям. */
 export type Slot =
@@ -27,7 +34,7 @@ export function encodeSlot(format: OutputFormat): Slot {
   return `${format}-encode`;
 }
 
-export function decodeSlot(mime: SupportedMime): Slot {
+export function decodeSlot(mime: JsquashMime): Slot {
   const format = mime.slice('image/'.length) as OutputFormat;
   return `${format}-decode`;
 }

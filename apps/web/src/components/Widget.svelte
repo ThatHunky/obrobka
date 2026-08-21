@@ -1,10 +1,18 @@
 <script lang="ts">
   import { sniffMime } from '@obrobka/codecs';
   import type { FitMode, OutputFormat, Position, Tier } from '@obrobka/core';
-  import { buildJob, getWorker, needsModel, type WidgetState } from '../lib/worker-api.js';
+  import type { Metadata } from '@obrobka/metadata';
+  import {
+    buildJob, getWorker, getWorkerSlot, needsModel, type WidgetState,
+  } from '../lib/worker-api.js';
+  import {
+    makeZip, poolSize, runBatch, uniqueName, type BatchItem,
+  } from '../lib/batch.js';
   import FitModePicker from './FitModePicker.svelte';
   import TierPicker from './TierPicker.svelte';
   import PositionPicker from './PositionPicker.svelte';
+  import BatchPanel from './BatchPanel.svelte';
+  import ExifPanel from './ExifPanel.svelte';
   import { dict, type Locale } from '../lib/i18n.js';
   import * as Comlink from 'comlink';
 
@@ -185,6 +193,25 @@
 
   let sourceBytes: Uint8Array | null = null;
   let sourceMime = '';
+  let meta = $state<Metadata | null>(null);
+
+  /**
+   * Пакетний режим.
+   *
+   * Вмикається від двох файлів. Один файл лишає теперішній вигляд із
+   * прев'ю «було / стало»: показувати список із єдиним рядком замість
+   * картинки — гірше, ніж було.
+   */
+  let batch = $state<BatchItem[]>([]);
+  let batchDone = $state(0);
+  let batchBusy = $state(false);
+  let batchStale = $state(false);
+  let abort: AbortController | null = null;
+  const sources = new Map<number, { bytes: Uint8Array; mime: string }>();
+  const results = new Map<number, Uint8Array>();
+  let nextId = 0;
+
+  const isBatch = $derived(batch.length > 1);
 
   const ratio = $derived(
     sourceSize > 0 && resultSize > 0 ? resultSize / sourceSize : 0,
@@ -196,8 +223,36 @@
       : `${(bytes / 1048576).toFixed(2)} ${t.units.mb}`;
   }
 
+  /**
+   * Готує прев'ю «Було».
+   *
+   * Для звичайних форматів це прямий objectURL: браузер і показує швидше,
+   * і сам застосовує орієнтацію EXIF — рівно так, як це зробить пайплайн.
+   * HEIC браузер у теґу `<img>` не показує (крім Safari), тож для нього
+   * доводиться просити воркер перемалювати зменшену копію.
+   */
+  async function makePreview(
+    bytes: Uint8Array, mime: string,
+  ): Promise<{ url: string; dims: { w: number; h: number } | null }> {
+    if (mime === 'image/heic') {
+      const copy = bytes.slice();
+      const p = await getWorker().preview(copy.buffer, mime, 900);
+      const url = URL.createObjectURL(new Blob([p.buf], { type: 'image/webp' }));
+      return { url, dims: { w: p.width, h: p.height } };
+    }
+    const url = URL.createObjectURL(new Blob([bytes.slice()], { type: mime }));
+    const dims = await new Promise<{ w: number; h: number } | null>((resolve) => {
+      const probe = new Image();
+      probe.onload = () => resolve({ w: probe.naturalWidth, h: probe.naturalHeight });
+      probe.onerror = () => resolve(null);
+      probe.src = url;
+    });
+    return { url, dims };
+  }
+
   async function accept(file: File): Promise<void> {
     error = '';
+    clearBatch();
     const bytes = new Uint8Array(await file.arrayBuffer());
     const mime = sniffMime(bytes);
     if (mime === null) {
@@ -210,15 +265,150 @@
     sourceName = file.name.replace(/\.[^.]+$/, '');
 
     if (sourceUrl !== '') URL.revokeObjectURL(sourceUrl);
-    sourceUrl = URL.createObjectURL(new Blob([bytes.slice()], { type: mime }));
-    sourceDims = await new Promise((resolve) => {
-      const probe = new Image();
-      probe.onload = () => resolve({ w: probe.naturalWidth, h: probe.naturalHeight });
-      probe.onerror = () => resolve(null);
-      probe.src = sourceUrl;
-    });
+    try {
+      const preview = await makePreview(bytes, mime);
+      sourceUrl = preview.url;
+      sourceDims = preview.dims;
+    } catch (e) {
+      error = e instanceof Error ? e.message : t.errProcess;
+      return;
+    }
+
+    // Метадані — довідкові: якщо не прочитались, обробку це не стосується.
+    void getWorker().metadata(bytes.slice().buffer)
+      .then((m) => { meta = m; })
+      .catch(() => { meta = null; });
 
     await process();
+  }
+
+  function clearBatch(): void {
+    abort?.abort();
+    abort = null;
+    batch = [];
+    batchDone = 0;
+    batchBusy = false;
+    batchStale = false;
+    sources.clear();
+    results.clear();
+  }
+
+  /**
+   * Приймає кілька файлів одразу.
+   *
+   * Один файл — звичайний шлях із прев'ю. Два й більше — пакет: тримати
+   * двадцять повнорозмірних прев'ю в пам'яті вкладки немає ані сенсу,
+   * ані запасу.
+   */
+  async function acceptMany(files: readonly File[]): Promise<void> {
+    if (files.length === 0) return;
+    if (files.length === 1) { await accept(files[0]!); return; }
+
+    error = '';
+    clearBatch();
+    resetSingle();
+
+    const items: BatchItem[] = [];
+    for (const file of files) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const mime = sniffMime(bytes);
+      const id = nextId++;
+      if (mime === null) {
+        items.push({
+          id, name: file.name, mime: '', sourceSize: bytes.length,
+          status: 'error', error: t.errUnknownFormat,
+        });
+        continue;
+      }
+      sources.set(id, { bytes, mime });
+      items.push({ id, name: file.name, mime, sourceSize: bytes.length, status: 'queued' });
+    }
+    batch = items;
+    await runAll();
+  }
+
+  function resetSingle(): void {
+    if (sourceUrl !== '') { URL.revokeObjectURL(sourceUrl); sourceUrl = ''; }
+    if (resultUrl !== '') { URL.revokeObjectURL(resultUrl); resultUrl = ''; }
+    sourceBytes = null;
+    sourceDims = null;
+    sourceSize = 0;
+    resultSize = 0;
+    meta = null;
+  }
+
+  /** Позначає, що результати застаріли: перезапускати двадцять файлів на кожен рух повзунка — знущання. */
+  function markStale(): void {
+    if (!isBatch) return;
+    batchStale = true;
+  }
+
+  async function runAll(): Promise<void> {
+    if (batchBusy) return;
+    const job = buildJob(state);
+    const model = needsModel(state);
+    if (model) await warmUp();
+
+    results.clear();
+    batchDone = 0;
+    batchStale = false;
+    batchBusy = true;
+    abort = new AbortController();
+
+    const pending = batch.filter((i) => sources.has(i.id));
+    for (const item of pending) { item.status = 'queued'; delete item.error; }
+
+    try {
+      await runBatch(pending, {
+        concurrency: poolSize(model, navigator.hardwareConcurrency),
+        signal: abort.signal,
+        onProgress: (done) => { batchDone = done; },
+        run: async (item, slot) => {
+          const src = sources.get(item.id)!;
+          item.status = 'working';
+          try {
+            const copy = src.bytes.slice();
+            const out = await getWorkerSlot(slot).process(copy.buffer, src.mime, job);
+            const bytes = new Uint8Array(out);
+            results.set(item.id, bytes);
+            item.resultSize = bytes.length;
+            item.status = 'done';
+          } catch (e) {
+            item.error = e instanceof Error ? e.message : t.errProcess;
+            item.status = 'error';
+            throw e;
+          }
+        },
+      });
+      reportRun(job.ops.map((o) => o.type));
+    } finally {
+      batchBusy = false;
+      abort = null;
+    }
+  }
+
+  async function downloadZip(): Promise<void> {
+    const taken = new Set<string>();
+    const entries: Record<string, Uint8Array> = {};
+    for (const item of batch) {
+      const bytes = results.get(item.id);
+      if (bytes === undefined) continue;
+      const name = uniqueName(taken, item.name, state.format);
+      item.outputName = name;
+      entries[name] = bytes;
+    }
+    try {
+      const blob = await makeZip(entries, state.format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `obrobka-${batch.length}.zip`;
+      a.click();
+      // Відкликаємо не одразу: Safari встигає почати завантаження не завжди.
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (e) {
+      error = e instanceof Error ? e.message : t.errProcess;
+    }
   }
 
   /**
@@ -283,6 +473,7 @@
   }
 
   async function process(): Promise<void> {
+    if (isBatch) { markStale(); return; }
     if (sourceBytes === null) return;
     busy = true;
     error = '';
@@ -316,8 +507,8 @@
   function onDrop(e: DragEvent): void {
     e.preventDefault();
     dragging = false;
-    const file = e.dataTransfer?.files?.[0];
-    if (file !== undefined) void accept(file);
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    if (files.length > 0) void acceptMany(files);
   }
 </script>
 
@@ -339,12 +530,13 @@
       {ready ? t.pick : t.preparing}
       <input
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/avif"
+        multiple
+        accept="image/png,image/jpeg,image/webp,image/avif,image/heic,image/heif,.heic,.heif"
         disabled={!ready}
         data-ready={ready}
         onchange={(e) => {
-          const f = e.currentTarget.files?.[0];
-          if (f !== undefined) void accept(f);
+          const files = Array.from(e.currentTarget.files ?? []);
+          if (files.length > 0) void acceptMany(files);
         }}
       />
       </label>
@@ -370,6 +562,26 @@
       {t.dropHint}<strong>{t.dropHintStrong}</strong>
     </p>
   </div>
+
+  {#if isBatch}
+    <BatchPanel
+      items={batch}
+      done={batchDone}
+      total={batch.filter((i) => sources.has(i.id)).length}
+      busy={batchBusy}
+      needsModel={needsModel(state)}
+      {t}
+      oncancel={() => abort?.abort()}
+      onclear={clearBatch}
+      onzip={() => void downloadZip()}
+    />
+    {#if batchStale && !batchBusy}
+      <button type="button" class="btn btn-accent rerun" data-testid="batch-run"
+              onclick={() => void runAll()}>
+        {t.batch.rerun}
+      </button>
+    {/if}
+  {/if}
 
   <!-- Пресети -->
   <div class="presets">
@@ -583,7 +795,7 @@
   {/if}
 
   <!-- Результат -->
-  {#if sourceUrl !== '' || busy}
+  {#if !isBatch && (sourceUrl !== '' || busy)}
     <div class="stage" class:busy>
       <figure class="pane">
         <figcaption><span class="tag">{t.before}</span></figcaption>
@@ -629,6 +841,8 @@
       </figure>
     </div>
 
+    <ExifPanel {meta} {t} />
+
     {#if resultUrl !== ''}
       <a
         class="btn btn-accent download"
@@ -647,6 +861,8 @@
 </section>
 
 <style>
+  .rerun { justify-self: start; }
+
   .widget {
     display: grid;
     gap: 1.5rem;

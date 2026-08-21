@@ -8,6 +8,7 @@ import { smartCrop } from './smartCrop.js';
 import { trim } from './trim.js';
 import { despeckleMask, erodeMask, featherMask, fillMaskHoles } from './mask.js';
 import { upscaleTiled } from './upscale.js';
+import { orient } from './orient.js';
 
 const NEEDS_MASK: ReadonlySet<Op['type']> = new Set(['removeBackground', 'outline', 'smartCrop', 'trim']);
 
@@ -88,6 +89,28 @@ async function applyUpscale(
   }
 }
 
+/**
+ * Повертає кадр за теґом EXIF — до всього іншого.
+ *
+ * Порядок принциповий. Маска, розумна обрізка й прив'язка полів працюють
+ * у координатах, і людина задає їх, дивлячись на зображення таким, яким
+ * його показує браузер, — тобто вже поверненим. Повернути кадр після них
+ * означало б, що «вгорі ліворуч» опиниться не там, де його бачили.
+ *
+ * Помилка читання нічого не зупиняє: биті EXIF трапляються, і це не привід
+ * не обробити фотографію.
+ */
+async function autoOrient(
+  img: RasterImage, input: Uint8Array, job: Job, ctx: Context,
+): Promise<RasterImage> {
+  if (job.autoOrient === false || ctx.metadata === undefined) return img;
+  try {
+    return orient(img, await ctx.metadata.readOrientation(input));
+  } catch {
+    return img;
+  }
+}
+
 function applyOp(img: RasterImage, op: Op, mask: Mask | null): RasterImage {
   switch (op.type) {
     case 'fit': return fit(img, op);
@@ -121,7 +144,7 @@ export async function runJob(
     throw new Error(`Формат ${job.output.format} не підтримується для запису`);
   }
 
-  let img = await ctx.codec.decode(input, mime);
+  let img = await autoOrient(await ctx.codec.decode(input, mime), input, job, ctx);
   const mask = job.ops.some((o) => NEEDS_MASK.has(o.type))
     ? await buildMask(img, job, ctx)
     : null;

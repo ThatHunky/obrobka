@@ -11,6 +11,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      exifr:
+        specifier: 7.1.3
+        version: 7.1.3
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20260820.1
@@ -45,6 +49,12 @@ importers:
       '@obrobka/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@obrobka/heic':
+        specifier: workspace:*
+        version: link:../../packages/heic
+      '@obrobka/metadata':
+        specifier: workspace:*
+        version: link:../../packages/metadata
       '@obrobka/onnx-node':
         specifier: workspace:*
         version: link:../../packages/onnx-node
@@ -75,6 +85,12 @@ importers:
       '@obrobka/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@obrobka/heic':
+        specifier: workspace:*
+        version: link:../../packages/heic
+      '@obrobka/metadata':
+        specifier: workspace:*
+        version: link:../../packages/metadata
       '@obrobka/models':
         specifier: workspace:*
         version: link:../../packages/models
@@ -87,6 +103,9 @@ importers:
       comlink:
         specifier: 4.4.2
         version: 4.4.2
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       svelte:
         specifier: 5.56.9
         version: 5.56.9
@@ -130,6 +149,31 @@ importers:
         version: 4.1.11(@types/node@24.10.1)(vite@8.2.1(@types/node@24.10.1)(esbuild@0.28.2)(yaml@2.9.0))
 
   packages/core: {}
+
+  packages/heic:
+    dependencies:
+      '@obrobka/core':
+        specifier: workspace:*
+        version: link:../core
+      libheif-js:
+        specifier: 1.19.8
+        version: 1.19.8
+
+  packages/metadata:
+    dependencies:
+      '@obrobka/codecs':
+        specifier: workspace:*
+        version: link:../codecs
+      '@obrobka/core':
+        specifier: workspace:*
+        version: link:../core
+      exifr:
+        specifier: 7.1.3
+        version: 7.1.3
+    devDependencies:
+      '@types/node':
+        specifier: 24.10.1
+        version: 24.10.1
 
   packages/models:
     dependencies:
@@ -1720,6 +1764,9 @@ packages:
   eventemitter3@5.0.4:
     resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
 
+  exifr@7.1.3:
+    resolution: {integrity: sha512-g/aje2noHivrRSLbAUtBPWFbxKdKhgj/xr1vATDdUXPOFYJlQ62Ft0oy+72V6XLIpDJfHs6gXLbBLAolqOXYRw==}
+
   expect-type@1.4.0:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
@@ -1744,6 +1791,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   find-process@2.1.1:
     resolution: {integrity: sha512-SrQDx3QhlmHM90iqn9rdjCQcw/T+WlpOkHFsjoRgB+zTpDfltNA1VSNYeYELwhUTJy12UFxqjWhmhOrJc+o4sA==}
@@ -1857,6 +1907,10 @@ packages:
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
+
+  libheif-js@1.19.8:
+    resolution: {integrity: sha512-vQJWusIxO7wavpON1dusciL8Go9jsIQ+EUrckauFYAiSTjcmLAsuJh3SszLpvkwPci3JcL41ek2n+LUZGFpPIQ==}
+    engines: {node: '>=8.0.0'}
 
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
@@ -3825,6 +3879,8 @@ snapshots:
 
   eventemitter3@5.0.4: {}
 
+  exifr@7.1.3: {}
+
   expect-type@1.4.0: {}
 
   extend@3.0.2: {}
@@ -3842,6 +3898,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
       picomatch: 4.0.5
+
+  fflate@0.8.3: {}
 
   find-process@2.1.1:
     dependencies:
@@ -3980,6 +4038,8 @@ snapshots:
   jsonc-parser@3.3.1: {}
 
   kleur@4.1.5: {}
+
+  libheif-js@1.19.8: {}
 
   lightningcss-android-arm64@1.33.0:
     optional: true

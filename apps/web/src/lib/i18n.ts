@@ -84,6 +84,48 @@ export interface Dict {
     empty: string;
     ops: Record<string, string>;
   };
+  batch: {
+    title: string;
+    files: (n: number) => string;
+    processing: (done: number, total: number) => string;
+    statuses: Record<'queued' | 'working' | 'done' | 'error', string>;
+    run: string;
+    rerun: string;
+    downloadZip: string;
+    total: string;
+    cancel: string;
+    clear: string;
+    failed: (n: number) => string;
+    modelIsSerial: string;
+    settingsApply: string;
+  };
+  exif: {
+    title: string;
+    none: string;
+    camera: string;
+    taken: string;
+    settings: string;
+    gps: string;
+    gpsWarning: string;
+    map: string;
+    orientation: string;
+    orientationApplied: string;
+    software: string;
+    cleanResult: string;
+    more: (n: number) => string;
+  };
+}
+
+/**
+ * Українська має три форми множини, і «3 файлів» замість «3 файли» —
+ * саме та дрібниця, за якою видно машинний переклад.
+ */
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 }
 
 const uk: Dict = {
@@ -134,7 +176,7 @@ const uk: Dict = {
   after: 'Стало',
   busy: 'Обробляю',
   download: 'Завантажити',
-  errUnknownFormat: 'Не вдалося розпізнати формат. Підтримуються PNG, JPEG, WebP і AVIF.',
+  errUnknownFormat: 'Не вдалося розпізнати формат. Підтримуються PNG, JPEG, WebP, AVIF і HEIC.',
   errProcess: 'Не вдалося обробити зображення',
   errModel: 'Не вдалося завантажити модель',
   errClipboard: 'Не вдалося прочитати буфер. Дозвольте доступ або натисніть Ctrl+V.',
@@ -189,6 +231,38 @@ const uk: Dict = {
       smartCrop: 'розумна обрізка', trim: 'обрізка країв',
     },
   },
+  batch: {
+    title: 'Пакет',
+    files: (n) => `${n} ${plural(n, 'файл', 'файли', 'файлів')}`,
+    processing: (d, t) => `Обробляю ${d} з ${t}`,
+    statuses: { queued: 'у черзі', working: 'обробляю', done: 'готово', error: 'помилка' },
+    run: 'Обробити',
+    rerun: 'Налаштування змінились — обробити наново',
+    downloadZip: 'Завантажити ZIP',
+    total: 'разом',
+    cancel: 'Спинити',
+    clear: 'Очистити',
+    failed: (n) => `${n} ${plural(n, 'файл не вдалося', 'файли не вдалося', 'файлів не вдалося')}`,
+    modelIsSerial: 'З моделлю файли йдуть по одному: чотири сесії з’їли б понад гігабайт '
+      + 'пам’яті, а швидше стало б лише вдвічі.',
+    settingsApply: 'Налаштування нижче діють на всі файли пакета.',
+  },
+  exif: {
+    title: 'Що записано у файлі',
+    none: 'Метаданих немає',
+    camera: 'Камера',
+    taken: 'Знято',
+    settings: 'Параметри',
+    gps: 'Координати',
+    gpsWarning: 'У цьому файлі записано, де його зняли.',
+    map: 'на карті',
+    orientation: 'Орієнтація',
+    orientationApplied: 'застосовано автоматично',
+    software: 'Програма',
+    cleanResult: 'У результат нічого з цього не потрапить: зображення перемальовується '
+      + 'з нуля, і метадані не переносяться.',
+    more: (n) => `ще ${n} ${plural(n, 'теґ', 'теґи', 'теґів')}`,
+  },
 };
 
 const en: Dict = {
@@ -239,7 +313,7 @@ const en: Dict = {
   after: 'After',
   busy: 'Working',
   download: 'Download',
-  errUnknownFormat: 'Could not recognise the format. PNG, JPEG, WebP and AVIF are supported.',
+  errUnknownFormat: 'Could not recognise the format. PNG, JPEG, WebP, AVIF and HEIC are supported.',
   errProcess: 'Could not process the image',
   errModel: 'Could not download the model',
   errClipboard: 'Could not read the clipboard. Allow access or press Ctrl+V.',
@@ -293,6 +367,38 @@ const en: Dict = {
       removeBackground: 'background removal', outline: 'outline',
       smartCrop: 'smart crop', trim: 'trim edges',
     },
+  },
+  batch: {
+    title: 'Batch',
+    files: (n) => `${n} ${n === 1 ? 'file' : 'files'}`,
+    processing: (d, t) => `Processing ${d} of ${t}`,
+    statuses: { queued: 'queued', working: 'working', done: 'done', error: 'failed' },
+    run: 'Process',
+    rerun: 'Settings changed — process again',
+    downloadZip: 'Download ZIP',
+    total: 'total',
+    cancel: 'Stop',
+    clear: 'Clear',
+    failed: (n) => `${n} ${n === 1 ? 'file' : 'files'} failed`,
+    modelIsSerial: 'With a model, files go one at a time: four sessions would eat over a '
+      + 'gigabyte of memory and only run twice as fast.',
+    settingsApply: 'The settings below apply to every file in the batch.',
+  },
+  exif: {
+    title: 'What the file records',
+    none: 'No metadata',
+    camera: 'Camera',
+    taken: 'Taken',
+    settings: 'Settings',
+    gps: 'Coordinates',
+    gpsWarning: 'This file records where the photo was taken.',
+    map: 'on a map',
+    orientation: 'Orientation',
+    orientationApplied: 'applied automatically',
+    software: 'Software',
+    cleanResult: 'None of this reaches the result: the image is redrawn from scratch, '
+      + 'and metadata is not carried over.',
+    more: (n) => `${n} more ${n === 1 ? 'tag' : 'tags'}`,
   },
 };
 

@@ -1,5 +1,10 @@
+import { basename, extname, join } from 'node:path';
+import { glob, mkdir } from 'node:fs/promises';
 import { runJob, type FitMode, type Job, type Op, type OutputFormat, type Tier } from '@obrobka/core';
+import { withDecoder } from '@obrobka/codecs';
 import { nodeCodec } from '@obrobka/codecs/node';
+import { decodeHeic } from '@obrobka/heic';
+import { readMetadata, readOrientation, stripMetadata, type Metadata } from '@obrobka/metadata';
 import { createSegmenter, createUpscaler } from '@obrobka/onnx-node';
 import { readImage, writeImage, parseColor } from './io.js';
 
@@ -11,7 +16,18 @@ export interface ToolResult {
   readonly format: OutputFormat;
 }
 
-const ctx = { codec: nodeCodec, segmenter: createSegmenter, upscaler: createUpscaler };
+/**
+ * HEIC під'єднано збоку — libheif ліцензований під LGPL і важить 1,46 МБ,
+ * тож вантажиться лише тоді, коли такий файл справді відкрили.
+ */
+const codec = withDecoder(nodeCodec, 'image/heic', decodeHeic);
+
+const ctx = {
+  codec,
+  segmenter: createSegmenter,
+  upscaler: createUpscaler,
+  metadata: { readOrientation },
+};
 
 async function runAndReport(input: string, output: string, job: Job): Promise<ToolResult> {
   const { bytes, mime } = await readImage(input);
@@ -20,7 +36,7 @@ async function runAndReport(input: string, output: string, job: Job): Promise<To
 
   // Розмір читаємо з готового файлу, а не рахуємо: у режимах inside та
   // outside вихідні розміри навмисно не збігаються із запитаними.
-  const written = await nodeCodec.decode(result, `image/${job.output.format}`);
+  const written = await codec.decode(result, `image/${job.output.format}`);
   return {
     path: output,
     width: written.width,
@@ -160,4 +176,165 @@ export async function upscaleImage(args: UpscaleArgs): Promise<ToolResult> {
       ? { format }
       : { format, quality: args.quality },
   });
+}
+
+export interface MetadataResult {
+  readonly path: string;
+  readonly metadata: Metadata;
+  /** Чи є в файлі координати. Винесено нагору — це найчутливіше з усього. */
+  readonly hasGps: boolean;
+}
+
+/**
+ * Читає метадані, не змінюючи файл.
+ *
+ * Орієнтація віддається числом теґу EXIF (1..8), а не описом: саме за ним
+ * решта інструментів повертає кадр.
+ */
+export async function readImageMetadata(args: { readonly input: string }): Promise<MetadataResult> {
+  const { bytes } = await readImage(args.input);
+  const metadata = await readMetadata(bytes);
+  return { path: args.input, metadata, hasGps: metadata.gps !== undefined };
+}
+
+export interface StripResult {
+  readonly path: string;
+  readonly bytesBefore: number;
+  readonly bytesAfter: number;
+  /** Що саме зникло — щоб було видно, чи спрацювало. */
+  readonly removed: readonly string[];
+}
+
+/**
+ * Знімає метадані, не чіпаючи пікселі.
+ *
+ * Це не те саме, що конвертація. Конвертація малює зображення заново й
+ * метадані втрачає сама собою — але разом із ними змінює кожен піксель.
+ * Тут байти зображення лишаються ті самі, зникають лише блоки навколо них.
+ */
+export async function stripImageMetadata(args: {
+  readonly input: string; readonly output: string;
+}): Promise<StripResult> {
+  const { bytes } = await readImage(args.input);
+  const before = await readMetadata(bytes);
+  const clean = await stripMetadata(bytes);
+  await writeImage(args.output, clean);
+
+  const after = await readMetadata(clean);
+  const removed = Object.keys(before.tags).filter((k) => !(k in after.tags));
+  return {
+    path: args.output,
+    bytesBefore: bytes.length,
+    bytesAfter: clean.length,
+    removed: removed.sort(),
+  };
+}
+
+export interface BatchArgs {
+  readonly pattern: string;
+  readonly cwd?: string | undefined;
+  readonly outputDir: string;
+  readonly format: OutputFormat;
+  readonly quality?: number | undefined;
+  readonly width?: number | undefined;
+  readonly height?: number | undefined;
+  readonly mode?: FitMode | undefined;
+  readonly allowUpscale?: boolean | undefined;
+  readonly removeBackground?: boolean | undefined;
+  readonly tier?: Tier | undefined;
+  readonly upscale?: 2 | 4 | undefined;
+  readonly limit?: number | undefined;
+}
+
+export interface BatchFailure {
+  readonly input: string;
+  readonly message: string;
+}
+
+export interface BatchResult {
+  readonly outputs: readonly ToolResult[];
+  readonly errors: readonly BatchFailure[];
+  /** Скільки файлів відкинув ліміт — мовчазне обрізання гірше за число. */
+  readonly skipped: number;
+}
+
+/** Стеля за замовчуванням: далі варто питати явно, а не запускати годинний прохід. */
+const DEFAULT_LIMIT = 100;
+
+function batchJob(args: BatchArgs): Job {
+  const ops: Op[] = [];
+  if (args.removeBackground === true) {
+    ops.push({ type: 'removeBackground', tier: args.tier ?? 'fast' });
+  }
+  if (args.upscale === 2 || args.upscale === 4) {
+    ops.push({ type: 'upscale', factor: args.upscale });
+  }
+  if (args.width !== undefined && args.height !== undefined) {
+    ops.push({
+      type: 'fit',
+      width: args.width,
+      height: args.height,
+      mode: args.mode ?? 'inside',
+      pad: 'transparent',
+      allowUpscale: args.allowUpscale ?? false,
+    });
+  }
+  return { ops, output: outputOf(args.format, args.quality) };
+}
+
+/**
+ * Розводить збіги імен.
+ *
+ * Після зміни розширення `a/photo.jpg` і `b/photo.png` дають те саме
+ * `photo.webp`. Мовчки затерти перший результат другим — найгірше з того,
+ * що може зробити пакетна обробка.
+ */
+function uniqueName(taken: Set<string>, base: string, format: OutputFormat): string {
+  const stem = basename(base, extname(base));
+  let name = `${stem}.${format}`;
+  let n = 2;
+  while (taken.has(name)) name = `${stem}-${n++}.${format}`;
+  taken.add(name);
+  return name;
+}
+
+/**
+ * Прогін за маскою файлів.
+ *
+ * Послідовно, і це свідомо. Двадцять фотографій по 12 Мп проходять за
+ * 18 с в один потік; пул із чотирьох воркерів дав би близько 6 с — але
+ * ціною другої точки входу в збірці. Виграш у дванадцять секунд на
+ * фоновій задачі агента того не вартий. У вкладці рішення протилежне:
+ * там на результат дивиться людина.
+ *
+ * Один битий файл не зупиняє решту — він потрапляє в errors. Порядок
+ * результатів детермінований: інакше агент не зіставить їх із входом.
+ */
+export async function processBatch(args: BatchArgs): Promise<BatchResult> {
+  const limit = args.limit ?? DEFAULT_LIMIT;
+  const found: string[] = [];
+  for await (const entry of glob(args.pattern, { cwd: args.cwd ?? process.cwd() })) {
+    found.push(entry);
+  }
+  found.sort();
+
+  const selected = found.slice(0, limit);
+  await mkdir(args.outputDir, { recursive: true });
+
+  const job = batchJob(args);
+  const taken = new Set<string>();
+  const outputs: ToolResult[] = [];
+  const errors: BatchFailure[] = [];
+
+  for (const entry of selected) {
+    const input = args.cwd === undefined ? entry : join(args.cwd, entry);
+    const output = join(args.outputDir, uniqueName(taken, entry, args.format));
+    try {
+      outputs.push(await runAndReport(input, output, job));
+    } catch (e) {
+      errors.push({ input, message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  return { outputs, errors, skipped: found.length - selected.length };
 }

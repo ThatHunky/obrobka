@@ -7,7 +7,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "typecheck": "tsc --build --force && tsc --noEmit -p apps/web/tsconfig.lib.json",
+    "typecheck": "tsc --build --force && tsc --noEmit -p apps/web/tsconfig.lib.json && tsc --noEmit -p tsconfig.tests.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
@@ -22,5 +22,8 @@
     "typescript": "7.0.2",
     "vitest": "4.1.11",
     "wrangler": "4.124.0"
+  },
+  "dependencies": {
+    "exifr": "7.1.3"
   }
 }

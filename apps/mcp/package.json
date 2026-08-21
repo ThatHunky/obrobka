@@ -13,7 +13,9 @@
     "@obrobka/codecs": "workspace:*",
     "@modelcontextprotocol/server": "2.0.0",
     "zod": "4.4.3",
-    "@obrobka/onnx-node": "workspace:*"
+    "@obrobka/onnx-node": "workspace:*",
+    "@obrobka/heic": "workspace:*",
+    "@obrobka/metadata": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.10.1",

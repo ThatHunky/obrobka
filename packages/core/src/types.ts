@@ -128,6 +128,16 @@ export type Op =
 export interface Job {
   readonly ops: readonly Op[];
   readonly output: EncodeOptions;
+  /**
+   * Чи повертати зображення за теґом EXIF Orientation. Типово true.
+   *
+   * Декодери віддають сирі пікселі й про орієнтацію не знають, а браузер
+   * у теґу `<img>` її застосовує. Без цього кроку вертикальне фото
+   * з телефона виглядало б рівним до обробки й покладеним набік після неї.
+   *
+   * Вимикати варто лише тоді, коли поворот уже застосував хтось інший.
+   */
+  readonly autoOrient?: boolean;
 }
 
 export const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
