@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="obrobka">
+  <title>obrobka</title>
+  <defs>
+    <!-- Шахівниця прозорості — підписний мотив бренду -->
+    <pattern id="c" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="#151C2F"/>
+      <rect width="8" height="8" fill="#232C46"/>
+      <rect x="8" y="8" width="8" height="8" fill="#232C46"/>
+    </pattern>
+    <clipPath id="t"><rect width="64" height="64" rx="14"/></clipPath>
+  </defs>
+  <g clip-path="url(#t)">
+    <rect width="64" height="64" fill="url(#c)"/>
+    <!-- Золото: трикутник над головною діагоналлю -->
+    <path d="M0 0 H64 V64 Z" fill="#F5B52E"/>
+    <!-- Акцентна лінія по діагоналі -->
+    <path d="M0 0 L64 64" stroke="#8B7CF6" stroke-width="2.2"/>
+  </g>
+</svg>

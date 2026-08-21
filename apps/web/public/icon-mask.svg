@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- maskable: безпечна зона 40 %, тому мітка стиснута всередину -->
+  <rect width="64" height="64" fill="#0B1020"/>
+  <defs>
+    <pattern id="c" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#151C2F"/>
+      <rect width="5" height="5" fill="#232C46"/>
+      <rect x="5" y="5" width="5" height="5" fill="#232C46"/>
+    </pattern>
+    <clipPath id="t"><rect x="13" y="13" width="38" height="38" rx="9"/></clipPath>
+  </defs>
+  <g clip-path="url(#t)">
+    <rect x="13" y="13" width="38" height="38" fill="url(#c)"/>
+    <path d="M13 13 H51 V51 Z" fill="#F5B52E"/>
+    <path d="M13 13 L51 51" stroke="#8B7CF6" stroke-width="1.6"/>
+  </g>
+</svg>
