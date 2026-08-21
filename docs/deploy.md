@@ -94,3 +94,28 @@ curl -sI https://models.obrobka.dobrovolskyi.com.ua/u2netp.onnx \
 Astro випустила 7.2.4 того ж дня, тож `pnpm-workspace.yaml` фіксує
 `astro: 7.2.3` і `satteri: 0.10.1` — найсвіжіші версії, які вже
 відлежались. Знімати це закріплення варто свідомо, а не автоматично.
+
+## Лічильник статистики
+
+Окремий воркер `obrobka-stats` на маршруті
+`obrobka.dobrovolskyi.com.ua/api/*`, база D1 `obrobka-stats`.
+
+```bash
+set -a; . ~/.config/cloudflare/env; set +a
+pnpm --filter @obrobka/stats exec wrangler deploy
+```
+
+Схема застосовується один раз:
+
+```bash
+pnpm --filter @obrobka/stats exec wrangler d1 execute obrobka-stats --remote --file=./schema.sql
+```
+
+**Що зберігається.** Тільки суми: скільки разів виконано кожну операцію
+і скільки разів це сталося в конкретному місті. Місто бере край Cloudflare
+із запиту й одразу агрегує — сама IP-адреса ніде не пишеться. Ні кук,
+ні ідентифікаторів, ні сесій. Зображення до воркера не потрапляють у
+жодному вигляді.
+
+Список дозволених операцій зашитий у воркері: усе інше відкидається,
+щоб у базу не сипалось сміття з відкритого ендпоінта.

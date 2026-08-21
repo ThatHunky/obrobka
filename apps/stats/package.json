@@ -1,0 +1,10 @@
+{
+  "name": "@obrobka/stats",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 execute obrobka-stats --remote --file=./schema.sql"
+  }
+}

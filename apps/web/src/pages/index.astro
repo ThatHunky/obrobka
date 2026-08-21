@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Widget from '../components/Widget.svelte';
 import HeroDemo from '../components/HeroDemo.astro';
+import Stats from '../components/Stats.svelte';
 ---
 <Base
   title="obrobka — конвертер зображень у браузері"
@@ -48,6 +49,7 @@ import HeroDemo from '../components/HeroDemo.astro';
       </article>
     </div>
   </section>
+  <Stats client:visible locale="uk" />
 </Base>
 
 <style>

@@ -1,0 +1,16 @@
+{
+  "name": "obrobka-stats",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "obrobka-stats",
+      "database_id": "463661a4-e265-497d-a8d9-19a6aa99c96c"
+    }
+  ],
+  "routes": [
+    { "pattern": "obrobka.dobrovolskyi.com.ua/api/*", "zone_name": "dobrovolskyi.com.ua" }
+  ]
+}

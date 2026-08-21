@@ -192,6 +192,26 @@
     return () => document.removeEventListener('paste', onPaste);
   });
 
+  /**
+   * Повідомляє лічильнику, що операції виконались.
+   *
+   * Надсилаються самі назви операцій — жодних розмірів, імен файлів
+   * чи вмісту. Повторні виклики під час підкручування повзунків
+   * притлумлюються, щоб один сеанс не рахувався десять разів.
+   */
+  let lastReport = 0;
+  function reportRun(ops: string[]): void {
+    const now = Date.now();
+    if (now - lastReport < 20_000) return;
+    lastReport = now;
+    void fetch('/api/tick', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ops }),
+      keepalive: true,
+    }).catch(() => { /* лічильник не критичний */ });
+  }
+
   async function process(): Promise<void> {
     if (sourceBytes === null) return;
     busy = true;
@@ -205,6 +225,7 @@
       resultUrl = URL.createObjectURL(blob);
       resultSize = blob.size;
       elapsed = Math.round(performance.now() - started);
+      reportRun(job.ops.map((o) => o.type));
     } catch (e) {
       error = e instanceof Error ? e.message : t.errProcess;
     } finally {

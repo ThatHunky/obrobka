@@ -49,6 +49,14 @@ export interface Dict {
   errNoImage: string;
   errNoClipboardApi: string;
   units: { kb: string; mb: string; ms: string };
+  stats: {
+    title: string;
+    runs: string;
+    cities: string;
+    note: string;
+    empty: string;
+    ops: Record<string, string>;
+  };
 }
 
 const uk: Dict = {
@@ -106,6 +114,20 @@ const uk: Dict = {
   errNoImage: 'У буфері обміну немає зображення.',
   errNoClipboardApi: 'Браузер не дає читати буфер обміну. Натисніть Ctrl+V або Cmd+V.',
   units: { kb: 'КБ', mb: 'МБ', ms: 'мс' },
+  stats: {
+    title: 'Скільки цим користуються',
+    runs: 'обробок',
+    cities: 'Звідки заходять',
+    note: 'Рахуються лише суми: скільки разів виконано операцію і в якому місті. '
+      + 'Ні кук, ні ідентифікаторів, ні IP-адрес. Зображення сюди не потрапляють — '
+      + 'вони взагалі не покидають вашу вкладку.',
+    empty: 'Поки що тиша. Обробіть щось — і лічильник зрушить.',
+    ops: {
+      resize: 'зміна розміру', convert: 'конвертація',
+      removeBackground: 'видалення фону', outline: 'обведення',
+      smartCrop: 'розумна обрізка', trim: 'обрізка країв',
+    },
+  },
 };
 
 const en: Dict = {
@@ -163,6 +185,20 @@ const en: Dict = {
   errNoImage: 'There is no image in the clipboard.',
   errNoClipboardApi: 'This browser will not read the clipboard. Press Ctrl+V or Cmd+V.',
   units: { kb: 'kB', mb: 'MB', ms: 'ms' },
+  stats: {
+    title: 'How much this gets used',
+    runs: 'runs',
+    cities: 'Where from',
+    note: 'Only totals are counted: how often an operation ran and in which city. '
+      + 'No cookies, no identifiers, no IP addresses. Images never reach this counter — '
+      + 'they never leave your tab at all.',
+    empty: 'Nothing yet. Process something and the counter will move.',
+    ops: {
+      resize: 'resize', convert: 'convert',
+      removeBackground: 'background removal', outline: 'outline',
+      smartCrop: 'smart crop', trim: 'trim edges',
+    },
+  },
 };
 
 export const DICTS: Record<Locale, Dict> = { uk, en };
