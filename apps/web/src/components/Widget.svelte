@@ -11,8 +11,8 @@
   import FitModePicker from './FitModePicker.svelte';
   import TierPicker from './TierPicker.svelte';
   import PositionPicker from './PositionPicker.svelte';
-  import BatchPanel from './BatchPanel.svelte';
   import ExifPanel from './ExifPanel.svelte';
+  import BatchPanel from './BatchPanel.svelte';
   import { dict, type Locale } from '../lib/i18n.js';
   import * as Comlink from 'comlink';
 
@@ -841,8 +841,6 @@
       </figure>
     </div>
 
-    <ExifPanel {meta} {t} />
-
     {#if resultUrl !== ''}
       <a
         class="btn btn-accent download"
@@ -858,6 +856,16 @@
       </a>
     {/if}
   {/if}
+
+  <!--
+    Панель на верхньому рівні шаблону навмисно.
+
+    Усередині {#if} її стилі не потрапляли у збірку: компонент опинявся
+    в JS-чанку, а його CSS-модуль Rollup викидав — панель рендерилась
+    голим HTML. Видимістю однаково керує сама панель: без метаданих вона
+    не малює нічого, а в пакетному режимі meta скидається в null.
+  -->
+  <ExifPanel {meta} {t} />
 </section>
 
 <style>

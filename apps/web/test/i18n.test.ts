@@ -36,12 +36,18 @@ describe('компоненти', () => {
     for (const f of await readdir(dir)) {
       if (!f.endsWith('.svelte')) continue;
       const src = await readFile(join(dir, f), 'utf8');
-      src.split('\n').forEach((line, i) => {
+      // Коментарі українською — це нормально, вони не потрапляють в UI.
+      // Багаторядкові HTML-коментарі гасимо цілком, зберігаючи переноси,
+      // щоб номери рядків у звіті лишились правдивими.
+      const masked = src.replace(
+        /<!--[\s\S]*?-->/g,
+        (block) => '\n'.repeat((block.match(/\n/g) ?? []).length),
+      );
+      masked.split('\n').forEach((line, i) => {
         const code = line.replace(/\/\/.*$/, '');
         const withoutComments = code.replace(/\/\*[\s\S]*?\*\//g, '');
         if (!CYRILLIC.test(withoutComments)) return;
-        // Коментарі українською — це нормально, вони не потрапляють в UI
-        if (/^\s*(\*|\/\/|<!--)/.test(line)) return;
+        if (/^\s*(\*|\/\/)/.test(line)) return;
         offenders.push(`${f}:${i + 1}  ${line.trim().slice(0, 70)}`);
       });
     }
