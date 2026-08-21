@@ -55,6 +55,20 @@ describe('preprocess', () => {
     expect(preprocess(solid(64, 64, 255), modelById('portrait')).data[0]).toBeCloseTo(1, 3);
     expect(preprocess(solid(64, 64, 0), modelById('portrait')).data[0]).toBeCloseTo(-1, 3);
   });
+
+  it('DIS-нормалізація зсуває на 0.5 без ділення', () => {
+    // Саме цей рецепт потрібен isnet: з ImageNet він знаходив 0 % суб'єкта
+    // на реальних фото, хоча на синтетичному тесті виглядав справним.
+    const white = preprocess(solid(64, 64, 255), modelById('quality')).data[0]!;
+    const black = preprocess(solid(64, 64, 0), modelById('quality')).data[0]!;
+    expect(white).toBeCloseTo(0.5, 3);
+    expect(black).toBeCloseTo(-0.5, 3);
+  });
+
+  it('портретна модель — fp16, а не uint8', () => {
+    // uint8-квантування нищить півтони альфи, від яких залежить matting
+    expect(modelById('portrait').file).toBe('modnet-fp16.onnx');
+  });
 });
 
 describe('postprocess', () => {

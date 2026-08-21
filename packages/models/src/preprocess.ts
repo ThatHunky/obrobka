@@ -14,6 +14,7 @@ function meanStd(n: Normalization, channel: number): readonly [number, number] {
   switch (n.kind) {
     case 'imagenet': return [IMAGENET_MEAN[channel]!, IMAGENET_STD[channel]!];
     case 'symmetric': return [0.5, 0.5];
+    case 'dis': return [0.5, 1];
     case 'none': return [0, 1];
   }
 }

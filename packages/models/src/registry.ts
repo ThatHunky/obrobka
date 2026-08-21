@@ -6,6 +6,7 @@ export type { Tier };
 export type Normalization =
   | { readonly kind: 'imagenet' }
   | { readonly kind: 'symmetric' }   // mean 0.5, std 0.5 → [-1, 1]
+  | { readonly kind: 'dis' }         // mean 0.5, std 1.0 — рецепт роботи DIS
   | { readonly kind: 'none' };       // тільки ÷255
 
 /** Як обирається розмір входу. */
@@ -59,11 +60,13 @@ export const MODELS: readonly ModelDescriptor[] = [
   {
     id: 'portrait',
     label: 'Портрет',
-    scope: 'Лише люди — краще тримає волосся',
-    bytes: 6_632_188,
+    scope: 'Портрети — найкраще тримає волосся',
+    bytes: 12_407_000,
     license: 'Apache-2.0',
     source: 'Xenova/modnet',
-    file: 'modnet.onnx',
+    // fp16, а не uint8: квантована версія на 6,3 МБ давала рвану маску
+    // з дірками — matting живе на півтонах альфи, і uint8 їх нищить.
+    file: 'modnet-fp16.onnx',
     sizing: { kind: 'shortestEdge', size: 512, multipleOf: 32 },
     normalization: { kind: 'symmetric' },
     outputIndex: 0,
@@ -77,7 +80,9 @@ export const MODELS: readonly ModelDescriptor[] = [
     source: 'imgly/isnet-general-onnx',
     file: 'isnet-general.onnx',
     sizing: { kind: 'fixed', size: 1024 },
-    normalization: { kind: 'imagenet' },
+    // DIS-рецепт, не ImageNet: з ImageNet модель знаходила 0 % суб'єкта
+    // на реальних фото, хоча на синтетичному тесті виглядала справною.
+    normalization: { kind: 'dis' },
     outputIndex: 0,
   },
 ];

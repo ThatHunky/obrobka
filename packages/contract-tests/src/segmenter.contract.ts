@@ -17,11 +17,11 @@ export interface SegmenterCase {
   readonly label: string;
   readonly make: () => Segmenter;
   /**
-   * Чи вміє модель знаходити неживі об'єкти.
+   * Чи призначена модель для будь-яких сюжетів.
    *
-   * MODNet навчений виключно на людях: на кулі він повертає порожню маску.
-   * Вимагати від нього загального результату означало б писати тест,
-   * приречений падати.
+   * MODNet — портретна: на неживих об'єктах він дає рвану маску з клаптів.
+   * Вимагати від нього точної площі означало б писати крихкий тест, тож
+   * для нього перевіряється лише те, що маска не вироджена.
    */
   readonly general: boolean;
 }
@@ -76,9 +76,13 @@ export function testSegmenterContract(suite: string, cases: readonly SegmenterCa
           expect(Math.abs(small - large)).toBeLessThan(0.03);
         }, 300_000);
       } else {
-        it("портретна модель не претендує на неживі об'єкти", async () => {
+        it('портретна модель дає невироджену маску', async () => {
           const m = await seg.segment(sphereImage(512));
-          expect(centerOf(m)).toBeLessThan(120);
+          const area = areaFraction(m);
+          // Ні порожньо, ні суцільно: модель щось знайшла, але точність
+          // на неживому сюжеті не гарантується й не перевіряється.
+          expect(area).toBeGreaterThan(0.01);
+          expect(area).toBeLessThan(0.9);
         }, 120_000);
       }
     });
