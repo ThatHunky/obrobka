@@ -1,0 +1,35 @@
+---
+import Base from '../layouts/Base.astro';
+
+/**
+ * Без цієї сторінки Cloudflare Pages віддає головну з кодом 200 на
+ * будь-який неіснуючий шлях. Для пошуку це soft-404: нескінченне сміття
+ * індексується як дублі головної.
+ */
+---
+<Base
+  title="Сторінку не знайдено — obrobka"
+  description="Такої сторінки немає. Поверніться на головну, щоб обробити зображення."
+  locale="uk"
+  path="/404"
+  alternatePath="/en/"
+>
+  <section class="wrap narrow miss">
+    <span class="tag">404</span>
+    <h1>Такої сторінки немає</h1>
+    <p class="lede">
+      Можливо, адреса змінилась або в ній друкарська помилка.
+    </p>
+    <nav class="links">
+      <a class="btn btn-accent" href="/">На головну</a>
+      <a class="btn" href="/видалити-фон/">Видалити фон</a>
+      <a class="btn" href="/змінити-розмір-зображення/">Змінити розмір</a>
+      <a class="btn" href="/стікер-для-телеграма/">Стікер Telegram</a>
+    </nav>
+  </section>
+</Base>
+
+<style>
+  .miss { display: grid; gap: 1.1rem; justify-items: start; }
+  .links { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.6rem; }
+</style>

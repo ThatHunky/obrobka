@@ -15,6 +15,8 @@ export interface WidgetState {
   readonly removeBg: boolean;
   readonly tier: Tier;
   readonly feather: number;
+  readonly shrink: number;
+  readonly despeckle: boolean;
   readonly outlineOn: boolean;
   readonly outlineWidth: number;
   readonly outlineColor: string;
@@ -42,7 +44,13 @@ export function parseHexColor(hex: string): RGBA {
 export function buildJob(s: WidgetState): Job {
   const ops: Op[] = [];
   if (s.removeBg) {
-    ops.push({ type: 'removeBackground', tier: s.tier, feather: s.feather });
+    ops.push({
+      type: 'removeBackground',
+      tier: s.tier,
+      feather: s.feather,
+      shrink: s.shrink,
+      despeckle: s.despeckle,
+    });
     if (s.outlineOn && s.outlineWidth > 0) {
       ops.push({
         type: 'outline',

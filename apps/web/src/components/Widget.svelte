@@ -34,6 +34,8 @@
     removeBg: preset?.removeBg ?? false,
     tier: preset?.tier ?? 'fast',
     feather: 0,
+    shrink: 1,
+    despeckle: true,
     outlineOn: preset?.outlineOn ?? false,
     outlineWidth: preset?.outlineWidth ?? 8,
     outlineColor: '#ffffff',
@@ -354,8 +356,24 @@
 
     <div class="controls">
       <label class="field">
-        <span>Пом'якшити край <em>{state.feather}</em></span>
+        <span>Стиснути край <em>{state.shrink} px</em></span>
+        <input type="range" min="0" max="6" bind:value={state.shrink} onchange={process} />
+      </label>
+      <label class="field">
+        <span>Пом'якшити край <em>{state.feather} px</em></span>
         <input type="range" min="0" max="8" bind:value={state.feather} onchange={process} />
+      </label>
+    </div>
+    <p class="tip">
+      Кольоровий ореол по контуру — це пікселі, колір яких змішаний із фоном.
+      Стиснення краю підтягує межу всередину й прибирає їх.
+    </p>
+
+    <div class="toggles">
+      <label class="switch" data-testid="despeckle">
+        <input type="checkbox" bind:checked={state.despeckle} onchange={process} />
+        <span class="track" aria-hidden="true"></span>
+        Прибирати хибні плями
       </label>
     </div>
 
@@ -582,6 +600,13 @@
     border-radius: var(--r-sm);
     background: none;
     cursor: pointer;
+  }
+
+  .tip {
+    font-size: 0.8rem;
+    color: var(--fg-faint);
+    max-width: 52ch;
+    margin-top: -0.5rem;
   }
 
   .error {

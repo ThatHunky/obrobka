@@ -146,3 +146,134 @@ export function thresholdMask(mask: Mask, threshold = DEFAULT_THRESHOLD): Mask {
   }
   return { data: out, width: mask.width, height: mask.height };
 }
+
+/**
+ * Мінімум у круговому околі — ерозія, дзеркальна до дилатації.
+ *
+ * Головний засіб проти кольорового ореолу: край маски підтягується
+ * всередину повз пікселі, колір яких уже змішаний із фоном.
+ */
+export function erodeMask(mask: Mask, radius: number): Mask {
+  const r = Math.round(radius);
+  if (r <= 0) {
+    return { data: new Uint8ClampedArray(mask.data), width: mask.width, height: mask.height };
+  }
+
+  const out = new Uint8ClampedArray(mask.data.length);
+  const r2 = r * r;
+  for (let y = 0; y < mask.height; y++) {
+    for (let x = 0; x < mask.width; x++) {
+      let worst = 255;
+      for (let dy = -r; dy <= r && worst > 0; dy++) {
+        const yy = y + dy;
+        for (let dx = -r; dx <= r; dx++) {
+          if (dx * dx + dy * dy > r2) continue;
+          const xx = x + dx;
+          // За межами зображення вважаємо порожньо: край має стискатись
+          const v = (yy < 0 || yy >= mask.height || xx < 0 || xx >= mask.width)
+            ? 0
+            : mask.data[yy * mask.width + xx]!;
+          if (v < worst) { worst = v; if (worst === 0) break; }
+        }
+      }
+      out[y * mask.width + x] = worst;
+    }
+  }
+  return { data: out, width: mask.width, height: mask.height };
+}
+
+/** Розмічає зв'язні області за чотирма сусідами. Повертає мітки й площі. */
+function labelComponents(
+  data: Uint8ClampedArray, width: number, height: number,
+  isInside: (v: number) => boolean,
+): { labels: Int32Array; areas: number[] } {
+  const labels = new Int32Array(width * height).fill(-1);
+  const areas: number[] = [];
+  const stack: number[] = [];
+
+  for (let start = 0; start < labels.length; start++) {
+    if (labels[start] !== -1 || !isInside(data[start]!)) continue;
+    const id = areas.length;
+    let area = 0;
+    stack.push(start);
+    labels[start] = id;
+
+    while (stack.length > 0) {
+      const i = stack.pop()!;
+      area++;
+      const x = i % width;
+      const y = (i / width) | 0;
+      if (x > 0) push(i - 1);
+      if (x < width - 1) push(i + 1);
+      if (y > 0) push(i - width);
+      if (y < height - 1) push(i + width);
+    }
+    areas.push(area);
+
+    function push(j: number): void {
+      if (labels[j] === -1 && isInside(data[j]!)) { labels[j] = id; stack.push(j); }
+    }
+  }
+  return { labels, areas };
+}
+
+/**
+ * Прибирає дрібні хибні острівці маски.
+ *
+ * Модель регулярно лишає окремі плями на фоні. Самі по собі вони ледь
+ * помітні, але обведення їх підсвічує й перетворює на явні артефакти.
+ * Поріг рахується від найбільшої області, а не від усього кадру: так
+ * велика окрема частина суб'єкта — скажімо, друга рука — виживає.
+ */
+export function despeckleMask(
+  mask: Mask, minFractionOfLargest = 0.05, threshold = 128,
+): Mask {
+  const { labels, areas } = labelComponents(
+    mask.data, mask.width, mask.height, (v) => v >= threshold,
+  );
+  if (areas.length <= 1) {
+    return { data: new Uint8ClampedArray(mask.data), width: mask.width, height: mask.height };
+  }
+  const largest = Math.max(...areas);
+  const minArea = largest * minFractionOfLargest;
+
+  const out = new Uint8ClampedArray(mask.data);
+  for (let i = 0; i < out.length; i++) {
+    const id = labels[i]!;
+    if (id !== -1 && areas[id]! < minArea) out[i] = 0;
+  }
+  return { data: out, width: mask.width, height: mask.height };
+}
+
+/**
+ * Заповнює дірки всередині суб'єкта.
+ *
+ * Порожня область вважається діркою, лише якщо вона не торкається краю
+ * кадру: інакше ми б залили справжній фон.
+ */
+export function fillMaskHoles(
+  mask: Mask, maxFractionOfFrame = 0.02, threshold = 128,
+): Mask {
+  const { labels, areas } = labelComponents(
+    mask.data, mask.width, mask.height, (v) => v < threshold,
+  );
+  const touchesBorder = new Set<number>();
+  const { width, height } = mask;
+  for (let x = 0; x < width; x++) {
+    touchesBorder.add(labels[x]!);
+    touchesBorder.add(labels[(height - 1) * width + x]!);
+  }
+  for (let y = 0; y < height; y++) {
+    touchesBorder.add(labels[y * width]!);
+    touchesBorder.add(labels[y * width + width - 1]!);
+  }
+
+  const maxArea = width * height * maxFractionOfFrame;
+  const out = new Uint8ClampedArray(mask.data);
+  for (let i = 0; i < out.length; i++) {
+    const id = labels[i]!;
+    if (id === -1 || touchesBorder.has(id)) continue;
+    if (areas[id]! <= maxArea) out[i] = 255;
+  }
+  return { data: out, width, height };
+}

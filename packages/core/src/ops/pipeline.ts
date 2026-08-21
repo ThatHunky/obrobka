@@ -6,7 +6,7 @@ import { applyMask } from './applyMask.js';
 import { outline } from './outline.js';
 import { smartCrop } from './smartCrop.js';
 import { trim } from './trim.js';
-import { featherMask } from './mask.js';
+import { despeckleMask, erodeMask, featherMask, fillMaskHoles } from './mask.js';
 
 const NEEDS_MASK: ReadonlySet<Op['type']> = new Set(['removeBackground', 'outline', 'smartCrop', 'trim']);
 
@@ -26,6 +26,27 @@ function tierOf(ops: readonly Op[]): Tier {
  * Рахувати її тричі означало б утричі довше чекати найдорожчий крок
  * пайплайна — для isnet це 665 мс проти двох секунд.
  */
+/**
+ * Чистить маску одразу після моделі — до того, як її побачать усі операції.
+ *
+ * Робиться централізовано навмисно: обведення, розумна обрізка й видалення
+ * фону мають спиратися на однакову маску. Якби чистка жила лише всередині
+ * removeBackground, обведення обводило б хибні острівці, які вже прибрані
+ * з видимого результату.
+ */
+function refineMask(mask: Mask, ops: readonly Op[]): Mask {
+  const bg = ops.find((o) => o.type === 'removeBackground');
+  const despeckle = bg?.type === 'removeBackground' ? bg.despeckle !== false : true;
+  const fill = bg?.type === 'removeBackground' ? bg.fillHoles !== false : true;
+  const shrink = bg?.type === 'removeBackground' ? bg.shrink ?? 1 : 0;
+
+  let m = mask;
+  if (despeckle) m = despeckleMask(m);
+  if (fill) m = fillMaskHoles(m);
+  if (shrink > 0) m = erodeMask(m, shrink);
+  return m;
+}
+
 async function buildMask(img: RasterImage, job: Job, ctx: Context): Promise<Mask> {
   if (ctx.segmenter === undefined) {
     throw new Error(
@@ -36,7 +57,7 @@ async function buildMask(img: RasterImage, job: Job, ctx: Context): Promise<Mask
   const seg = ctx.segmenter(tierOf(job.ops));
   await seg.load();
   try {
-    return await seg.segment(img);
+    return refineMask(await seg.segment(img), job.ops);
   } finally {
     await seg.dispose();
   }

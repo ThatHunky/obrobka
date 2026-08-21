@@ -96,7 +96,18 @@ export type Op =
   | {
       readonly type: 'removeBackground';
       readonly tier?: Tier;
+      /** Пом'якшення краю в пікселях. Типово 0. */
       readonly feather?: number;
+      /**
+       * Стиснення краю в пікселях — головний засіб проти кольорового ореолу.
+       * Типово 1: один піксель прибирає більшість забруднених кольором точок
+       * і майже не помітний на око.
+       */
+      readonly shrink?: number;
+      /** Прибирати дрібні хибні острівці маски. Типово true. */
+      readonly despeckle?: boolean;
+      /** Заповнювати дірки всередині суб'єкта. Типово true. */
+      readonly fillHoles?: boolean;
     }
   | ({ readonly type: 'outline' } & OutlineOptions)
   | ({ readonly type: 'smartCrop' } & SmartCropOptions)
