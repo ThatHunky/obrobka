@@ -1,6 +1,6 @@
 import { runJob, type FitMode, type Job, type Op, type OutputFormat, type Tier } from '@obrobka/core';
 import { nodeCodec } from '@obrobka/codecs/node';
-import { createSegmenter } from '@obrobka/segmenter-node';
+import { createSegmenter, createUpscaler } from '@obrobka/onnx-node';
 import { readImage, writeImage, parseColor } from './io.js';
 
 export interface ToolResult {
@@ -11,7 +11,7 @@ export interface ToolResult {
   readonly format: OutputFormat;
 }
 
-const ctx = { codec: nodeCodec, segmenter: createSegmenter };
+const ctx = { codec: nodeCodec, segmenter: createSegmenter, upscaler: createUpscaler };
 
 async function runAndReport(input: string, output: string, job: Job): Promise<ToolResult> {
   const { bytes, mime } = await readImage(input);
@@ -133,5 +133,31 @@ export async function smartCropImage(args: SmartCropArgs): Promise<ToolResult> {
     output: args.quality === undefined
       ? { format: args.format }
       : { format: args.format, quality: args.quality },
+  });
+}
+
+export interface UpscaleArgs {
+  readonly input: string;
+  readonly output: string;
+  readonly factor?: 2 | 4 | undefined;
+  readonly format?: OutputFormat | undefined;
+  readonly quality?: number | undefined;
+}
+
+/**
+ * Збільшення нейромережею.
+ *
+ * Виконується тайлами, тож пам'ять не залежить від розміру зображення,
+ * а от час — залежить прямо: приблизно 2,6 с на тайл 256×256 для ×2
+ * і стільки ж на тайл 128×128 для ×4 на звичайному процесорі.
+ */
+export async function upscaleImage(args: UpscaleArgs): Promise<ToolResult> {
+  const factor = args.factor ?? 2;
+  const format = args.format ?? 'png';
+  return runAndReport(args.input, args.output, {
+    ops: [{ type: 'upscale', factor }],
+    output: args.quality === undefined
+      ? { format }
+      : { format, quality: args.quality },
   });
 }

@@ -7,6 +7,7 @@ import { outline } from './outline.js';
 import { smartCrop } from './smartCrop.js';
 import { trim } from './trim.js';
 import { despeckleMask, erodeMask, featherMask, fillMaskHoles } from './mask.js';
+import { upscaleTiled } from './upscale.js';
 
 const NEEDS_MASK: ReadonlySet<Op['type']> = new Set(['removeBackground', 'outline', 'smartCrop', 'trim']);
 
@@ -63,6 +64,30 @@ async function buildMask(img: RasterImage, job: Job, ctx: Context): Promise<Mask
   }
 }
 
+/**
+ * Збільшення — єдина асинхронна операція: вона ходить у модель тайлами.
+ * Решта лишається чистими синхронними функціями.
+ */
+async function applyUpscale(
+  img: RasterImage, factor: 2 | 4, ctx: Context,
+): Promise<RasterImage> {
+  if (ctx.upscaler === undefined) {
+    throw new Error(
+      'Збільшення потребує апскейлера, але його не передано в контекст. ' +
+      'Додайте ctx.upscaler.',
+    );
+  }
+  const up = ctx.upscaler(factor);
+  await up.load();
+  try {
+    return await upscaleTiled(img, up, (done, total) => {
+      ctx.onProgress?.('upscale', done, total);
+    });
+  } finally {
+    await up.dispose();
+  }
+}
+
 function applyOp(img: RasterImage, op: Op, mask: Mask | null): RasterImage {
   switch (op.type) {
     case 'fit': return fit(img, op);
@@ -76,6 +101,8 @@ function applyOp(img: RasterImage, op: Op, mask: Mask | null): RasterImage {
     case 'outline': return outline(img, mask!, op);
     case 'smartCrop': return smartCrop(img, mask!, op);
     case 'trim': return trim(img, mask!, op);
+    case 'upscale':
+      throw new Error('Збільшення виконується окремо — сюди воно не має потрапляти');
     default: {
       const unknown = op as { type: string };
       throw new Error(`Невідома операція: ${unknown.type}`);
@@ -99,6 +126,10 @@ export async function runJob(
     ? await buildMask(img, job, ctx)
     : null;
 
-  for (const op of job.ops) img = applyOp(img, op, mask);
+  for (const op of job.ops) {
+    img = op.type === 'upscale'
+      ? await applyUpscale(img, op.factor, ctx)
+      : applyOp(img, op, mask);
+  }
   return ctx.codec.encode(img, job.output);
 }

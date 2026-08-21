@@ -45,4 +45,8 @@ export interface Context {
    * працюють без нього, а операції з маскою дадуть зрозумілу помилку.
    */
   readonly segmenter?: (tier: Tier) => Segmenter;
+  /** Створює апскейлер. Потрібен лише для операції upscale. */
+  readonly upscaler?: (factor: 2 | 4) => Upscaler;
+  /** Повідомляє про повільні кроки — зараз це лише тайли апскейлу. */
+  readonly onProgress?: (stage: string, done: number, total: number) => void;
 }

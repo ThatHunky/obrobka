@@ -112,6 +112,11 @@ export type Op =
   | ({ readonly type: 'outline' } & OutlineOptions)
   | ({ readonly type: 'smartCrop' } & SmartCropOptions)
   | {
+      /** Збільшення нейромережею. Виконується тайлами. */
+      readonly type: 'upscale';
+      readonly factor: 2 | 4;
+    }
+  | {
       /** Обрізає порожні краї до прямокутника суб'єкта. */
       readonly type: 'trim';
       /** Запас навколо суб'єкта як частка його більшої сторони. Типово 0. */

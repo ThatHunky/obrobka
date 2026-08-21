@@ -17,10 +17,10 @@
       "path": "apps/mcp"
     },
     {
-      "path": "packages/segmenter-node"
+      "path": "packages/onnx-node"
     },
     {
-      "path": "packages/segmenter-web"
+      "path": "packages/onnx-web"
     }
   ]
 }

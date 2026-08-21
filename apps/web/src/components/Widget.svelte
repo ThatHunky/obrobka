@@ -45,7 +45,39 @@
     position: 'center',
     framing: 'none',
     framingPadding: 0.08,
+    upscale: 1,
   });
+
+  let tileProgress = $state<{ done: number; total: number } | null>(null);
+
+  /**
+   * Груба оцінка часу за виміряним темпом: близько 2,6 с на тайл на
+   * звичайному процесорі, приблизно вдесятеро швидше на відеокарті.
+   * Точність тут не потрібна — важливо, щоб людина розуміла порядок
+   * величини й не думала, що сторінка зависла.
+   */
+  const upscaleEstimate = $derived.by(() => {
+    if (state.upscale === 1 || sourceDims === null) return null;
+    const tile = state.upscale === 2 ? 256 : 128;
+    const tiles = Math.ceil(sourceDims.w / tile) * Math.ceil(sourceDims.h / tile);
+    const perTile = providerName === 'webgpu' ? 0.3 : 2.6;
+    return tiles * perTile;
+  });
+
+  async function onUpscaleChange(factor: 1 | 2 | 4): Promise<void> {
+    state.upscale = factor;
+    if (factor !== 1) {
+      downloadProgress = 0.001;
+      try {
+        providerName = await getWorker().warmUpUpscaler(
+          factor, Comlink.proxy((f: number) => { downloadProgress = f; }),
+        );
+      } catch (e) {
+        error = e instanceof Error ? e.message : t.errModel;
+      } finally { downloadProgress = 0; }
+    }
+    await process();
+  }
 
   /** Співвідношення сторін як швидкі пресети. */
   const ratios: { label: string; r: number | null }[] = [
@@ -258,7 +290,10 @@
     try {
       const copy = sourceBytes.slice();
       const job = buildJob(state);
-      const out = await getWorker().process(copy.buffer, sourceMime, job);
+      const out = await getWorker().process(
+        copy.buffer, sourceMime, job,
+        Comlink.proxy((p: { done: number; total: number }) => { tileProgress = p; }),
+      );
       if (resultUrl !== '') URL.revokeObjectURL(resultUrl);
       const blob = new Blob([out], { type: `image/${state.format}` });
       resultUrl = URL.createObjectURL(blob);
@@ -269,6 +304,7 @@
       error = e instanceof Error ? e.message : t.errProcess;
     } finally {
       busy = false;
+      tileProgress = null;
     }
   }
 
@@ -407,6 +443,37 @@
   </div>
 
   <!-- Числові налаштування -->
+  <fieldset class="upscale">
+    <legend>{t.upscale.section}</legend>
+    <div class="row">
+      {#each [
+        { f: 1, label: t.upscale.off, bytes: 0 },
+        { f: 2, label: t.upscale.x2, bytes: 8_078_888 },
+        { f: 4, label: t.upscale.x4, bytes: 18_999_633 },
+      ] as const as o (o.f)}
+        <button
+          type="button"
+          class="chip"
+          class:on={state.upscale === o.f}
+          data-testid={`upscale-${o.f}`}
+          onclick={() => void onUpscaleChange(o.f)}
+        >
+          {o.label}
+          {#if o.bytes > 0}<em>{(o.bytes / 1_048_576).toFixed(1)} {t.units.mb}</em>{/if}
+        </button>
+      {/each}
+    </div>
+    {#if state.upscale !== 1}
+      <p class="tip">
+        {t.upscale.note}
+        {#if upscaleEstimate !== null} · {t.upscale.estimate(upscaleEstimate)}{/if}
+      </p>
+      {#if providerName === 'wasm'}
+        <p class="tip warn">{t.upscale.slowWarning}</p>
+      {/if}
+    {/if}
+  </fieldset>
+
   <div class="controls">
     <label class="field">
       <span>{t.width}</span>
@@ -539,6 +606,11 @@
         <figcaption>
           <span class="tag accent">{t.after}</span>
           {#if busy}<span class="spinner" aria-label={t.busy}></span>{/if}
+          {#if tileProgress !== null}
+            <span class="tiles" data-testid="tile-progress">
+              {t.upscale.tiles(tileProgress.done, tileProgress.total)}
+            </span>
+          {/if}
         </figcaption>
         <div class="canvas checker">
           {#if resultUrl !== ''}
@@ -677,6 +749,25 @@
   }
   .framing .chip.on em { color: var(--accent); }
   .pad { margin-top: 0.7rem; max-width: 16rem; }
+
+  .upscale { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .upscale legend {
+    padding: 0; margin-bottom: 0.5rem;
+    font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-muted);
+  }
+  .upscale .row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .upscale .chip { flex-direction: column; align-items: flex-start; gap: 0.1rem; }
+  .upscale .chip em {
+    font-style: normal; font-family: var(--font-mono);
+    font-size: 0.68rem; color: var(--fg-faint);
+  }
+  .upscale .chip.on em { color: var(--accent); }
+  .tip.warn { color: var(--gold-600); }
+  .tiles {
+    font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-muted);
+    font-variant-numeric: tabular-nums;
+  }
 
   .controls {
     display: grid;

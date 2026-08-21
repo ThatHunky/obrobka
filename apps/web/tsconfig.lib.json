@@ -1,0 +1,19 @@
+{
+  // Перевірка типів для звичайного TypeScript веб-застосунку.
+  //
+  // `astro check` тут не працює: мовний сервер Astro потребує програмного
+  // API, якого TypeScript 7 (Go-порт) ще не надає. Файли .astro і .svelte
+  // лишаються поза перевіркою, зате весь код у src/lib і тести — під нею.
+  // Саме там і був баг, який це проґавило: тестовий стан оголошено як
+  // WidgetState, але без половини полів.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vitest/globals", "node"]
+  },
+  "include": ["src/lib/**/*.ts", "test/**/*.ts"]
+}

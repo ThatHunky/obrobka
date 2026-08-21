@@ -5,18 +5,19 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "check": "astro check"
   },
   "dependencies": {
-    "@obrobka/core": "workspace:*",
-    "@obrobka/codecs": "workspace:*",
-    "astro": "7.2.3",
-    "svelte": "5.56.9",
-    "@astrojs/svelte": "9.0.1",
     "@astrojs/sitemap": "3.7.3",
+    "@astrojs/svelte": "9.0.1",
+    "@obrobka/codecs": "workspace:*",
+    "@obrobka/core": "workspace:*",
+    "@obrobka/models": "workspace:*",
+    "@obrobka/onnx-web": "workspace:*",
+    "astro": "7.2.3",
     "comlink": "4.4.2",
-    "@obrobka/segmenter-web": "workspace:*",
-    "@obrobka/models": "workspace:*"
+    "svelte": "5.56.9"
   },
   "devDependencies": {
     "@types/node": "24.10.1"

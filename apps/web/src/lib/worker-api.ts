@@ -21,6 +21,8 @@ export interface WidgetState {
   /** Ні / кадр за суб'єктом / обрізка порожніх країв. */
   readonly framing: 'none' | 'smart' | 'trim';
   readonly framingPadding: number;
+  /** 1 — без збільшення. */
+  readonly upscale: 1 | 2 | 4;
   readonly outlineOn: boolean;
   readonly outlineWidth: number;
   readonly outlineColor: string;
@@ -78,6 +80,12 @@ export function buildJob(s: WidgetState): Job {
     ops.push({ type: 'trim', padding: s.framingPadding, tier: s.tier });
   }
 
+  // Збільшення — після кадрування й до приведення в розмір: інакше ми
+  // ганяли б модель по пікселях, які потім однаково обріжуться.
+  if (s.upscale === 2 || s.upscale === 4) {
+    ops.push({ type: 'upscale', factor: s.upscale });
+  }
+
   ops.push({
     type: 'fit',
     width: s.width,
@@ -99,9 +107,17 @@ export function needsModel(s: WidgetState): boolean {
   return s.removeBg || s.framing !== 'none';
 }
 
+export interface TileProgress { stage: string; done: number; total: number }
+
 export interface WorkerApi {
-  process(bytes: ArrayBuffer, mime: string, job: Job): Promise<ArrayBuffer>;
+  process(
+    bytes: ArrayBuffer, mime: string, job: Job,
+    onTile?: (p: TileProgress) => void,
+  ): Promise<ArrayBuffer>;
   warmUp(tier: Tier, onProgress: (fraction: number) => void): Promise<Provider | null>;
+  warmUpUpscaler(
+    factor: 2 | 4, onProgress: (fraction: number) => void,
+  ): Promise<Provider | null>;
 }
 
 let cached: Comlink.Remote<WorkerApi> | null = null;

@@ -3,7 +3,8 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import * as z from 'zod';
 import {
-  convertImage, resizeImage, removeBackground, smartCropImage, type ToolResult,
+  convertImage, resizeImage, removeBackground, smartCropImage, upscaleImage,
+  type ToolResult,
 } from './tools.js';
 
 const FORMAT = z.enum(['png', 'jpeg', 'webp', 'avif']);
@@ -105,6 +106,23 @@ serveStdio(() => {
     }),
     outputSchema: RESULT,
   }, async (args) => report(await smartCropImage(args)));
+
+  server.registerTool('upscale_image', {
+    description:
+      'Збільшує зображення нейромережею Swin2SR — удвічі або вчетверо. ' +
+      'Виконується тайлами, тож пам\'ять не залежить від розміру, а час залежить ' +
+      'прямо: близько 2,6 с на тайл на звичайному процесорі. Для великих ' +
+      'зображень це хвилини.',
+    inputSchema: z.object({
+      input: z.string().describe('Абсолютний шлях до вхідного файлу'),
+      output: z.string().describe('Абсолютний шлях для запису результату'),
+      factor: z.union([z.literal(2), z.literal(4)]).optional()
+        .describe('Множник збільшення. Типово 2.'),
+      format: FORMAT.optional().describe('Формат результату. Типово png.'),
+      quality: z.number().int().min(1).max(100).optional().describe('Якість 1..100'),
+    }),
+    outputSchema: RESULT,
+  }, async (args) => report(await upscaleImage(args)));
 
   return server;
 });

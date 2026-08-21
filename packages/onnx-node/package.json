@@ -1,8 +1,13 @@
 {
-  "name": "@obrobka/segmenter-node",
+  "name": "@obrobka/onnx-node",
   "version": "0.0.0",
   "type": "module",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {

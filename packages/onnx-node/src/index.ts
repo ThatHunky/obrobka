@@ -50,3 +50,5 @@ class NodeSegmenter implements Segmenter {
 export function createSegmenter(tier: Tier): Segmenter {
   return new NodeSegmenter(modelById(tier));
 }
+
+export { createUpscaler } from './upscaler.js';

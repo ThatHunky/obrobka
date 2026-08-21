@@ -97,3 +97,62 @@ export function inputSizeFor(
     Math.max(multipleOf, Math.round((v * scale) / multipleOf) * multipleOf);
   return { width: round(width), height: round(height) };
 }
+
+// ─────────────────────────────  Апскейл  ─────────────────────────────
+
+export type UpscaleFactor = 2 | 4;
+
+export interface UpscalerDescriptor {
+  readonly factor: UpscaleFactor;
+  readonly bytes: number;
+  readonly license: string;
+  readonly source: string;
+  readonly file: string;
+  /**
+   * Розмір тайла у вхідних пікселях.
+   *
+   * Підібраний за виміряним піком пам'яті: ×2 на тайлі 256 бере 561 МБ,
+   * ×4 на тайлі 128 — 578 МБ. Удвічі більший тайл у кожному випадку
+   * дає близько 1,8 ГБ, що вже за межами розумного для вкладки.
+   */
+  readonly tileSize: number;
+  /** Вхід має бути кратним цьому числу — вимога Swin2SR. */
+  readonly padTo: number;
+}
+
+/**
+ * Квантування обрано за вимірюванням PSNR на реальних фото, а не за розміром.
+ *
+ * Для ×2 fp32 дає +0.2…+0.4 дБ проти uint8 і важить лише на 2,4 МБ більше,
+ * тож економія не варта втрати. Для ×4, навпаки, uint8 не поступається
+ * fp32 зовсім, тому там береться він — 18 МБ замість 50.
+ *
+ * Варіант ×4 у fp16 не використовується: він не завантажується в
+ * onnxruntime 1.27 через помилку злиття вузлів у графі.
+ */
+export const UPSCALERS: readonly UpscalerDescriptor[] = [
+  {
+    factor: 2,
+    bytes: 8_078_888,
+    license: 'Apache-2.0',
+    source: 'Xenova/swin2SR-lightweight-x2-64',
+    file: 'swin2sr-x2.onnx',
+    tileSize: 256,
+    padTo: 8,
+  },
+  {
+    factor: 4,
+    bytes: 18_999_633,
+    license: 'Apache-2.0',
+    source: 'Xenova/swin2SR-realworld-sr-x4-64-bsrgan-psnr',
+    file: 'swin2sr-x4-uint8.onnx',
+    tileSize: 128,
+    padTo: 8,
+  },
+];
+
+export function upscalerFor(factor: UpscaleFactor): UpscalerDescriptor {
+  const d = UPSCALERS.find((x) => x.factor === factor);
+  if (d === undefined) throw new Error(`Немає апскейлера з множником ${factor}`);
+  return d;
+}

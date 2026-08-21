@@ -9,11 +9,13 @@ BUCKET=obrobka-models
 CACHE=${MODEL_CACHE:-$HOME/.cache/obrobka/models}
 mkdir -p "$CACHE"
 
-names=(u2netp.onnx modnet-fp16.onnx isnet-general.onnx)
+names=(u2netp.onnx modnet-fp16.onnx isnet-general.onnx swin2sr-x2.onnx swin2sr-x4-uint8.onnx)
 urls=(
   "https://huggingface.co/BritishWerewolf/U-2-Netp/resolve/main/onnx/model.onnx"
   "https://huggingface.co/Xenova/modnet/resolve/main/onnx/model_fp16.onnx"
   "https://huggingface.co/imgly/isnet-general-onnx/resolve/main/onnx/model_fp16.onnx"
+  "https://huggingface.co/Xenova/swin2SR-lightweight-x2-64/resolve/main/onnx/model.onnx"
+  "https://huggingface.co/Xenova/swin2SR-realworld-sr-x4-64-bsrgan-psnr/resolve/main/onnx/model_uint8.onnx"
 )
 
 for i in "${!names[@]}"; do

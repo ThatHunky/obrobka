@@ -93,3 +93,5 @@ class WebSegmenter implements WebSegmenterApi {
 export function createSegmenter(tier: Tier): WebSegmenterApi {
   return new WebSegmenter(modelById(tier));
 }
+
+export { createUpscaler, type WebUpscalerApi } from './upscaler.js';

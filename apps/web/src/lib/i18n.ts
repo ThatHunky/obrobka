@@ -66,6 +66,16 @@ export interface Dict {
     needsModel: string;
   };
   positions: Record<string, string>;
+  upscale: {
+    section: string;
+    off: string;
+    x2: string;
+    x4: string;
+    note: string;
+    slowWarning: string;
+    tiles: (done: number, total: number) => string;
+    estimate: (seconds: number) => string;
+  };
   stats: {
     title: string;
     runs: string;
@@ -151,6 +161,19 @@ const uk: Dict = {
     'top-left': 'вгорі ліворуч', top: 'вгорі', 'top-right': 'вгорі праворуч',
     left: 'ліворуч', center: 'по центру', right: 'праворуч',
     'bottom-left': 'внизу ліворуч', bottom: 'внизу', 'bottom-right': 'внизу праворуч',
+  },
+  upscale: {
+    section: 'Збільшення',
+    off: 'Не збільшувати',
+    x2: 'удвічі',
+    x4: 'учетверо',
+    note: 'Нейромережа домальовує деталі, яких немає в оригіналі. Працює тайлами, '
+      + 'тож пам’ять не залежить від розміру — а от час залежить прямо.',
+    slowWarning: 'На процесорі це помітно повільно. Якщо є WebGPU, буде значно швидше.',
+    tiles: (d, n) => `Тайл ${d} з ${n}`,
+    estimate: (sec) => sec < 60
+      ? `приблизно ${Math.round(sec)} с`
+      : `приблизно ${Math.round(sec / 60)} хв`,
   },
   stats: {
     title: 'Скільки цим користуються',
@@ -243,6 +266,19 @@ const en: Dict = {
     'top-left': 'top left', top: 'top', 'top-right': 'top right',
     left: 'left', center: 'centre', right: 'right',
     'bottom-left': 'bottom left', bottom: 'bottom', 'bottom-right': 'bottom right',
+  },
+  upscale: {
+    section: 'Upscaling',
+    off: 'No upscaling',
+    x2: '2×',
+    x4: '4×',
+    note: 'The network invents detail that is not in the original. It works in tiles, '
+      + 'so memory does not depend on image size — but time does, directly.',
+    slowWarning: 'This is noticeably slow on a CPU. With WebGPU it is far quicker.',
+    tiles: (d, n) => `Tile ${d} of ${n}`,
+    estimate: (sec) => sec < 60
+      ? `about ${Math.round(sec)} s`
+      : `about ${Math.round(sec / 60)} min`,
   },
   stats: {
     title: 'How much this gets used',
