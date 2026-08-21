@@ -16,9 +16,6 @@ export type InputSizing =
 
 export interface ModelDescriptor {
   readonly id: Tier;
-  readonly label: string;
-  /** Що модель уміє знаходити — показується користувачу. */
-  readonly scope: string;
   readonly bytes: number;
   readonly license: string;
   readonly source: string;
@@ -47,8 +44,6 @@ export interface ModelDescriptor {
 export const MODELS: readonly ModelDescriptor[] = [
   {
     id: 'fast',
-    label: 'Швидко',
-    scope: 'Будь-який сюжет',
     bytes: 4_574_861,
     license: 'Apache-2.0',
     source: 'BritishWerewolf/U-2-Netp',
@@ -59,9 +54,7 @@ export const MODELS: readonly ModelDescriptor[] = [
   },
   {
     id: 'portrait',
-    label: 'Портрет',
-    scope: 'Портрети — найкраще тримає волосся',
-    bytes: 12_407_000,
+    bytes: 12_984_781,
     license: 'Apache-2.0',
     source: 'Xenova/modnet',
     // fp16, а не uint8: квантована версія на 6,3 МБ давала рвану маску
@@ -73,9 +66,7 @@ export const MODELS: readonly ModelDescriptor[] = [
   },
   {
     id: 'quality',
-    label: 'Якісно',
-    scope: 'Будь-який сюжет, чіткіші краї',
-    bytes: 88_186_000,
+    bytes: 88_152_708,
     license: 'MIT',
     source: 'imgly/isnet-general-onnx',
     file: 'isnet-general.onnx',

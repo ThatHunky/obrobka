@@ -1,20 +1,21 @@
 <script lang="ts">
   import { MODELS, type Tier } from '@obrobka/models';
+  import type { Dict } from '../lib/i18n.js';
 
   let { value = $bindable<Tier>('fast'), progress = 0, provider = null,
-        loading = null, onchange }:
+        loading = null, t, onchange }:
     {
       value: Tier; progress?: number; provider?: string | null;
-      loading?: Tier | null; onchange?: () => void;
+      loading?: Tier | null; t: Dict; onchange?: () => void;
     } = $props();
 
   function mb(bytes: number): string {
-    return `${(bytes / 1_048_576).toFixed(1)} МБ`;
+    return `${(bytes / 1_048_576).toFixed(1)} ${t.units.mb}`;
   }
 </script>
 
 <fieldset class="tiers">
-  <legend>Модель</legend>
+  <legend>{t.model}</legend>
   <div class="row">
     {#each MODELS as m (m.id)}
       <button
@@ -26,8 +27,8 @@
         data-testid={`tier-${m.id}`}
         onclick={() => { value = m.id; onchange?.(); }}
       >
-        <span class="label">{m.label}</span>
-        <span class="scope">{m.scope}</span>
+        <span class="label">{t.tiers[m.id].label}</span>
+        <span class="scope">{t.tiers[m.id].scope}</span>
         <span class="size">{mb(m.bytes)}</span>
       </button>
     {/each}
@@ -38,16 +39,11 @@
          aria-valuemin="0" aria-valuemax="100">
       <span style={`width: ${progress * 100}%`}></span>
     </div>
-    <p class="note">
-      Завантажую {MODELS.find((m) => m.id === loading)?.label ?? 'модель'} —
-      {Math.round(progress * 100)} %
-    </p>
+    <p class="note">{t.downloading(loading ? t.tiers[loading].label : '', Math.round(progress * 100))}</p>
   {:else if provider === 'wasm'}
-    <p class="note warn" data-testid="provider">
-      WebGPU недоступний — рахую на процесорі. Це помітно повільніше.
-    </p>
+    <p class="note warn" data-testid="provider">{t.onCpu}</p>
   {:else if provider === 'webgpu'}
-    <p class="note ok" data-testid="provider">Рахую на відеокарті</p>
+    <p class="note ok" data-testid="provider">{t.onGpu}</p>
   {/if}
 </fieldset>
 

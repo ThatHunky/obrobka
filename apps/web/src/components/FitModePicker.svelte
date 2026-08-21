@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FitMode } from '@obrobka/core';
+  import type { Dict } from '../lib/i18n.js';
 
   /**
    * Вибір режиму діаграмами, а не списком.
@@ -9,16 +10,13 @@
    * обріжеться; штрихована рамка — запитаний кадр, коли результат
    * навмисно має інший розмір.
    */
-  let { value = $bindable<FitMode>('contain'), onchange }:
-    { value: FitMode; onchange?: () => void } = $props();
+  let { value = $bindable<FitMode>('contain'), t, onchange }:
+    { value: FitMode; t: Dict; onchange?: () => void } = $props();
 
-  const options: { id: FitMode; label: string; hint: string }[] = [
-    { id: 'contain', label: 'Вписати',    hint: 'Ціле зображення, вільне місце стає прозорими полями' },
-    { id: 'cover',   label: 'Заповнити',  hint: 'Кадр заповнено повністю, що не вмістилось — обрізано' },
-    { id: 'fill',    label: 'Розтягнути', hint: 'Точний кадр, але пропорції спотворюються' },
-    { id: 'inside',  label: 'Без полів',  hint: 'Вписує й віддає менший розмір — полів не буде' },
-    { id: 'outside', label: 'Покрити',    hint: 'Віддає більший розмір — нічого не обрізається' },
-  ];
+  const order: FitMode[] = ['contain', 'cover', 'fill', 'inside', 'outside'];
+  const options = $derived(order.map((id) => ({
+    id, label: t.modes[id]!.label, hint: t.modes[id]!.hint,
+  })));
 
   function pick(id: FitMode): void {
     value = id;
@@ -27,7 +25,7 @@
 </script>
 
 <fieldset class="picker">
-  <legend>Як вписати</legend>
+  <legend>{t.fitHow}</legend>
   <div class="row">
     {#each options as o (o.id)}
       <button

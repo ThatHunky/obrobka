@@ -24,7 +24,7 @@ test('показує рівні моделі з вагою', async ({ page }) =>
   await page.getByTestId('removebg').click();
   await expect(page.getByTestId('tier-fast')).toBeVisible();
   await expect(page.getByTestId('tier-fast')).toContainText('4.4 МБ');
-  await expect(page.getByTestId('tier-portrait')).toContainText('6.3 МБ');
+  await expect(page.getByTestId('tier-portrait')).toContainText('12.4 МБ');
   await expect(page.getByTestId('tier-quality')).toContainText('84.1 МБ');
 });
 
@@ -38,9 +38,9 @@ test('повідомляє провайдер виконання', async ({ page
 
 test('jpeg перемикається на png при видаленні фону', async ({ page }) => {
   await ready(page);
-  await page.getByLabel('Формат').selectOption('jpeg');
+  await page.getByLabel(/Формат|Format/).selectOption('jpeg');
   await page.getByTestId('removebg').click();
-  await expect(page.getByLabel('Формат')).toHaveValue('png');
+  await expect(page.getByLabel(/Формат|Format/)).toHaveValue('png');
 });
 
 test('результат справді прозорий по кутах', async ({ page }) => {

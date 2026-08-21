@@ -4,6 +4,7 @@
   import { buildJob, getWorker, type WidgetState } from '../lib/worker-api.js';
   import FitModePicker from './FitModePicker.svelte';
   import TierPicker from './TierPicker.svelte';
+  import { dict, type Locale } from '../lib/i18n.js';
   import * as Comlink from 'comlink';
 
   interface PresetInput {
@@ -13,14 +14,15 @@
   }
   interface Preset { label: string; width: number; height: number; mode: FitMode }
 
-  const { preset }: { preset?: PresetInput } = $props();
+  const { preset, locale = 'uk' }: { preset?: PresetInput; locale?: Locale } = $props();
+  const t = $derived(dict(locale));
 
-  const presets: Preset[] = [
-    { label: 'Стікер Telegram', width: 512, height: 512, mode: 'contain' },
-    { label: 'Аватар', width: 400, height: 400, mode: 'cover' },
-    { label: 'OG-image', width: 1200, height: 630, mode: 'cover' },
-    { label: 'Full HD', width: 1920, height: 1080, mode: 'contain' },
-  ];
+  const presets = $derived<Preset[]>([
+    { label: t.presets.sticker, width: 512, height: 512, mode: 'contain' },
+    { label: t.presets.avatar, width: 400, height: 400, mode: 'cover' },
+    { label: t.presets.og, width: 1200, height: 630, mode: 'cover' },
+    { label: t.presets.fullhd, width: 1920, height: 1080, mode: 'contain' },
+  ]);
 
   let state = $state<WidgetState>({
     width: preset?.width ?? 512,
@@ -83,7 +85,7 @@
       if (token === warmUpToken) providerName = provider;
     } catch (e) {
       if (token === warmUpToken) {
-        error = e instanceof Error ? e.message : 'Не вдалося завантажити модель';
+        error = e instanceof Error ? e.message : t.errModel;
       }
     } finally {
       if (token === warmUpToken) {
@@ -120,8 +122,8 @@
 
   function kb(bytes: number): string {
     return bytes < 1024 * 1024
-      ? `${(bytes / 1024).toFixed(1)} КБ`
-      : `${(bytes / 1048576).toFixed(2)} МБ`;
+      ? `${(bytes / 1024).toFixed(1)} ${t.units.kb}`
+      : `${(bytes / 1048576).toFixed(2)} ${t.units.mb}`;
   }
 
   async function accept(file: File): Promise<void> {
@@ -129,7 +131,7 @@
     const bytes = new Uint8Array(await file.arrayBuffer());
     const mime = sniffMime(bytes);
     if (mime === null) {
-      error = 'Не вдалося розпізнати формат. Підтримуються PNG, JPEG, WebP і AVIF.';
+      error = t.errUnknownFormat;
       return;
     }
     sourceBytes = bytes;
@@ -160,7 +162,7 @@
     error = '';
     const clip = navigator.clipboard as Clipboard & { read?: () => Promise<ClipboardItem[]> };
     if (typeof clip?.read !== 'function') {
-      error = 'Браузер не дає читати буфер обміну. Натисніть Ctrl+V або Cmd+V.';
+      error = t.errNoClipboardApi;
       return;
     }
     try {
@@ -171,9 +173,9 @@
         await accept(new File([blob], 'clipboard', { type: blob.type || type }));
         return;
       }
-      error = 'У буфері обміну немає зображення.';
+      error = t.errNoImage;
     } catch {
-      error = 'Не вдалося прочитати буфер. Дозвольте доступ або натисніть Ctrl+V.';
+      error = t.errClipboard;
     }
   }
 
@@ -204,7 +206,7 @@
       resultSize = blob.size;
       elapsed = Math.round(performance.now() - started);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Не вдалося обробити зображення';
+      error = e instanceof Error ? e.message : t.errProcess;
     } finally {
       busy = false;
     }
@@ -238,7 +240,7 @@
            stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
         <path d="M12 16V4m0 0L7 9m5-5 5 5" /><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
       </svg>
-      {ready ? 'Обрати зображення' : 'Готуємо інструмент…'}
+      {ready ? t.pick : t.preparing}
       <input
         type="file"
         accept="image/png,image/jpeg,image/webp,image/avif"
@@ -264,12 +266,12 @@
           <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z" />
           <path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2" />
         </svg>
-        Вставити
+        {t.paste}
       </button>
     </div>
 
     <p class="drop-hint">
-      перетягніть сюди або вставте через Ctrl+V · <strong>файл не залишає ваш пристрій</strong>
+      {t.dropHint}<strong>{t.dropHintStrong}</strong>
     </p>
   </div>
 
@@ -289,30 +291,30 @@
     {/each}
   </div>
 
-  <FitModePicker bind:value={state.mode} onchange={process} />
+  <FitModePicker bind:value={state.mode} {t} onchange={process} />
 
   <!-- Числові налаштування -->
   <div class="controls">
     <label class="field">
-      <span>Ширина</span>
+      <span>{t.width}</span>
       <input type="number" min="1" max="20000" bind:value={state.width} onchange={process} />
     </label>
     <label class="field">
-      <span>Висота</span>
+      <span>{t.height}</span>
       <input type="number" min="1" max="20000" bind:value={state.height} onchange={process} />
     </label>
     <label class="field">
-      <span>Формат</span>
+      <span>{t.format}</span>
       <select bind:value={state.format} onchange={process}>
-        <option value="png">PNG · без втрат</option>
-        <option value="webp">WebP · компактний</option>
-        <option value="jpeg">JPEG · сумісний</option>
-        <option value="avif">AVIF · найменший</option>
+        <option value="png">{t.formats.png}</option>
+        <option value="webp">{t.formats.webp}</option>
+        <option value="jpeg">{t.formats.jpeg}</option>
+        <option value="avif">{t.formats.avif}</option>
       </select>
     </label>
     {#if state.format !== 'png'}
       <label class="field">
-        <span>Якість <em>{state.quality}</em></span>
+        <span>{t.quality} <em>{state.quality}</em></span>
         <input type="range" min="1" max="100" bind:value={state.quality} onchange={process} />
       </label>
     {/if}
@@ -322,18 +324,18 @@
     <label class="switch">
       <input type="checkbox" bind:checked={state.padTransparent} onchange={process} />
       <span class="track" aria-hidden="true"></span>
-      Прозорі поля
+      {t.padTransparent}
     </label>
     {#if !state.padTransparent}
       <label class="switch color">
         <input type="color" bind:value={state.padColor} onchange={process} />
-        Колір полів
+        {t.padColour}
       </label>
     {/if}
     <label class="switch">
       <input type="checkbox" bind:checked={state.allowUpscale} onchange={process} />
       <span class="track" aria-hidden="true"></span>
-      Дозволити збільшення
+      {t.allowUpscale}
     </label>
   </div>
 
@@ -341,7 +343,7 @@
     <label class="switch" data-testid="removebg">
       <input type="checkbox" bind:checked={state.removeBg} onchange={onBgToggle} />
       <span class="track" aria-hidden="true"></span>
-      Прибрати фон
+      {t.removeBg}
     </label>
   </div>
 
@@ -351,29 +353,27 @@
       progress={downloadProgress}
       provider={providerName}
       loading={loadingTier}
+      {t}
       onchange={onTierChange}
     />
 
     <div class="controls">
       <label class="field">
-        <span>Стиснути край <em>{state.shrink} px</em></span>
+        <span>{t.shrink} <em>{state.shrink} px</em></span>
         <input type="range" min="0" max="6" bind:value={state.shrink} onchange={process} />
       </label>
       <label class="field">
-        <span>Пом'якшити край <em>{state.feather} px</em></span>
+        <span>{t.feather} <em>{state.feather} px</em></span>
         <input type="range" min="0" max="8" bind:value={state.feather} onchange={process} />
       </label>
     </div>
-    <p class="tip">
-      Кольоровий ореол по контуру — це пікселі, колір яких змішаний із фоном.
-      Стиснення краю підтягує межу всередину й прибирає їх.
-    </p>
+    <p class="tip">{t.edgeTip}</p>
 
     <div class="toggles">
       <label class="switch" data-testid="despeckle">
         <input type="checkbox" bind:checked={state.despeckle} onchange={process} />
         <span class="track" aria-hidden="true"></span>
-        Прибирати хибні плями
+        {t.despeckle}
       </label>
     </div>
 
@@ -381,16 +381,16 @@
       <label class="switch" data-testid="outline-toggle">
         <input type="checkbox" bind:checked={state.outlineOn} onchange={process} />
         <span class="track" aria-hidden="true"></span>
-        Обведення
+        {t.outline}
       </label>
       {#if state.outlineOn}
         <label class="field">
-          <span>Товщина <em>{state.outlineWidth}</em></span>
+          <span>{t.thickness} <em>{state.outlineWidth}</em></span>
           <input type="range" min="1" max="40" bind:value={state.outlineWidth} onchange={process} />
         </label>
         <label class="switch color">
           <input type="color" bind:value={state.outlineColor} onchange={process} />
-          Колір
+          {t.colour}
         </label>
       {/if}
     </div>
@@ -404,9 +404,9 @@
   {#if sourceUrl !== '' || busy}
     <div class="stage" class:busy>
       <figure class="pane">
-        <figcaption><span class="tag">Було</span></figcaption>
+        <figcaption><span class="tag">{t.before}</span></figcaption>
         <div class="canvas checker">
-          {#if sourceUrl !== ''}<img src={sourceUrl} alt="Вихідне зображення" />{/if}
+          {#if sourceUrl !== ''}<img src={sourceUrl} alt={t.before} />{/if}
         </div>
         <p class="meta">
           {#if sourceDims}{sourceDims.w}×{sourceDims.h}{/if} · {kb(sourceSize)}
@@ -422,12 +422,12 @@
 
       <figure class="pane">
         <figcaption>
-          <span class="tag accent">Стало</span>
-          {#if busy}<span class="spinner" aria-label="Обробляю"></span>{/if}
+          <span class="tag accent">{t.after}</span>
+          {#if busy}<span class="spinner" aria-label={t.busy}></span>{/if}
         </figcaption>
         <div class="canvas checker">
           {#if resultUrl !== ''}
-            <img src={resultUrl} alt="Результат обробки" data-testid="result" />
+            <img src={resultUrl} alt={t.after} data-testid="result" />
           {/if}
         </div>
         <p class="meta">
@@ -437,7 +437,7 @@
               {ratio < 1 ? '−' : '+'}{Math.abs(Math.round((1 - ratio) * 100))}%
             </span>
           {/if}
-          {#if elapsed > 0}<span class="ms">{elapsed} мс</span>{/if}
+          {#if elapsed > 0}<span class="ms">{elapsed} {t.units.ms}</span>{/if}
         </p>
       </figure>
     </div>
@@ -453,7 +453,7 @@
              stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
           <path d="M12 4v12m0 0 5-5m-5 5-5-5" /><path d="M4 18v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1" />
         </svg>
-        Завантажити
+        {t.download}
       </a>
     {/if}
   {/if}
