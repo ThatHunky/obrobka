@@ -53,21 +53,41 @@
   }
 
   async function onTierChange(): Promise<void> {
+    providerName = null;
     await warmUp();
     await process();
   }
 
+  /**
+   * Лічильник прогрівів. Перемикання рівня під час завантаження запускає
+   * другий warmUp, і без цієї мітки finally першого обнуляв би прогрес
+   * другого — смуга блимала. Застарілі виклики тепер мовчать.
+   */
+  let warmUpToken = 0;
+  let loadingTier = $state<Tier | null>(null);
+
   async function warmUp(): Promise<void> {
+    const token = ++warmUpToken;
+    const tier = state.tier;
+    loadingTier = tier;
     downloadProgress = 0.001;
     try {
-      providerName = await getWorker().warmUp(
-        state.tier,
-        Comlink.proxy((f: number) => { downloadProgress = f; }),
+      const provider = await getWorker().warmUp(
+        tier,
+        Comlink.proxy((f: number) => {
+          if (token === warmUpToken) downloadProgress = f;
+        }),
       );
+      if (token === warmUpToken) providerName = provider;
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Не вдалося завантажити модель';
+      if (token === warmUpToken) {
+        error = e instanceof Error ? e.message : 'Не вдалося завантажити модель';
+      }
     } finally {
-      downloadProgress = 0;
+      if (token === warmUpToken) {
+        downloadProgress = 0;
+        loadingTier = null;
+      }
     }
   }
 
@@ -328,6 +348,7 @@
       bind:value={state.tier}
       progress={downloadProgress}
       provider={providerName}
+      loading={loadingTier}
       onchange={onTierChange}
     />
 

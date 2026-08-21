@@ -1,8 +1,12 @@
 <script lang="ts">
   import { MODELS, type Tier } from '@obrobka/models';
 
-  let { value = $bindable<Tier>('fast'), progress = 0, provider = null, onchange }:
-    { value: Tier; progress?: number; provider?: string | null; onchange?: () => void } = $props();
+  let { value = $bindable<Tier>('fast'), progress = 0, provider = null,
+        loading = null, onchange }:
+    {
+      value: Tier; progress?: number; provider?: string | null;
+      loading?: Tier | null; onchange?: () => void;
+    } = $props();
 
   function mb(bytes: number): string {
     return `${(bytes / 1_048_576).toFixed(1)} МБ`;
@@ -17,6 +21,7 @@
         type="button"
         class="tier"
         class:on={value === m.id}
+        class:loading={loading === m.id}
         aria-pressed={value === m.id}
         data-testid={`tier-${m.id}`}
         onclick={() => { value = m.id; onchange?.(); }}
@@ -33,7 +38,10 @@
          aria-valuemin="0" aria-valuemax="100">
       <span style={`width: ${progress * 100}%`}></span>
     </div>
-    <p class="note">Завантажую модель — {Math.round(progress * 100)} %</p>
+    <p class="note">
+      Завантажую {MODELS.find((m) => m.id === loading)?.label ?? 'модель'} —
+      {Math.round(progress * 100)} %
+    </p>
   {:else if provider === 'wasm'}
     <p class="note warn" data-testid="provider">
       WebGPU недоступний — рахую на процесорі. Це помітно повільніше.
@@ -69,6 +77,12 @@
     background: color-mix(in oklab, var(--accent-bg) 12%, var(--bg-raised));
     box-shadow: 0 0 0 1px var(--accent), 0 6px 18px var(--accent-glow);
   }
+  /* Той рівень, що зараз качається, пульсує — видно, за чим саме прогрес */
+  .tier.loading { border-color: var(--accent); }
+  .tier.loading .size { color: var(--accent); }
+  @keyframes pulse { 50% { opacity: 0.55; } }
+  .tier.loading .size { animation: pulse 1.1s ease-in-out infinite; }
+
   .label { font-weight: 600; font-size: 0.9rem; }
   .scope { font-size: 0.75rem; color: var(--fg-muted); }
   .size { font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-faint); }

@@ -1,12 +1,34 @@
 const CACHE = 'obrobka-models-v1';
 
 /**
+ * Завантаження, що вже тривають, за URL.
+ *
+ * Без цього швидке перемикання між рівнями запускає друге завантаження тієї
+ * самої моделі паралельно з першим: обидва пишуть у прогрес, і смуга блимає.
+ */
+const inFlight = new Map<string, Promise<ArrayBuffer>>();
+
+/**
  * Дає байти моделі, кешуючи їх між сесіями.
  *
  * Cache Storage, а не IndexedDB: моделі — це саме HTTP-відповіді, тож
  * сторінка «мої моделі» зможе показати й почистити кеш без окремого обліку.
  */
-export async function fetchModel(
+export function fetchModel(
+  url: string, onProgress?: (fraction: number) => void,
+): Promise<ArrayBuffer> {
+  const running = inFlight.get(url);
+  if (running !== undefined) {
+    // Уже качається: віддаємо той самий проміс і не заводимо другий потік.
+    running.then(() => onProgress?.(1)).catch(() => {});
+    return running;
+  }
+  const started = download(url, onProgress).finally(() => inFlight.delete(url));
+  inFlight.set(url, started);
+  return started;
+}
+
+async function download(
   url: string, onProgress?: (fraction: number) => void,
 ): Promise<ArrayBuffer> {
   const cache = await caches.open(CACHE);

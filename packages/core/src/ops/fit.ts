@@ -18,11 +18,17 @@ function place(
   if (typeof position === 'object') return [Math.round(position.x), Math.round(position.y)];
   const cx = Math.round((outerW - innerW) / 2);
   const cy = Math.round((outerH - innerH) / 2);
+  const right = outerW - innerW;
+  const bottom = outerH - innerH;
   switch (position) {
     case 'top': return [cx, 0];
-    case 'bottom': return [cx, outerH - innerH];
+    case 'bottom': return [cx, bottom];
     case 'left': return [0, cy];
-    case 'right': return [outerW - innerW, cy];
+    case 'right': return [right, cy];
+    case 'top-left': return [0, 0];
+    case 'top-right': return [right, 0];
+    case 'bottom-left': return [0, bottom];
+    case 'bottom-right': return [right, bottom];
     default: return [cx, cy];
   }
 }

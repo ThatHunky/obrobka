@@ -5,14 +5,16 @@ import { crop } from './crop.js';
 import { applyMask } from './applyMask.js';
 import { outline } from './outline.js';
 import { smartCrop } from './smartCrop.js';
+import { trim } from './trim.js';
 import { featherMask } from './mask.js';
 
-const NEEDS_MASK: ReadonlySet<Op['type']> = new Set(['removeBackground', 'outline', 'smartCrop']);
+const NEEDS_MASK: ReadonlySet<Op['type']> = new Set(['removeBackground', 'outline', 'smartCrop', 'trim']);
 
 function tierOf(ops: readonly Op[]): Tier {
   for (const op of ops) {
     if (op.type === 'removeBackground' && op.tier !== undefined) return op.tier;
     if (op.type === 'smartCrop' && op.tier !== undefined) return op.tier;
+    if (op.type === 'trim' && op.tier !== undefined) return op.tier;
   }
   return 'fast';
 }
@@ -52,6 +54,7 @@ function applyOp(img: RasterImage, op: Op, mask: Mask | null): RasterImage {
     }
     case 'outline': return outline(img, mask!, op);
     case 'smartCrop': return smartCrop(img, mask!, op);
+    case 'trim': return trim(img, mask!, op);
     default: {
       const unknown = op as { type: string };
       throw new Error(`Невідома операція: ${unknown.type}`);

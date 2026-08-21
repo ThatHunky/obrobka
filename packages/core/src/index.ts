@@ -8,3 +8,4 @@ export { maskBBox, resampleMask, dilateMask, featherMask, thresholdMask } from '
 export { applyMask } from './ops/applyMask.js';
 export { outline } from './ops/outline.js';
 export { smartCrop } from './ops/smartCrop.js';
+export { trim, type TrimOptions } from './ops/trim.js';

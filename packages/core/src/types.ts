@@ -35,9 +35,17 @@ export interface RGBA {
  */
 export type FitMode = 'contain' | 'cover' | 'fill' | 'inside' | 'outside';
 
+/** Дев'ять точок прив'язки плюс явне зміщення в пікселях. */
 export type Position =
   | 'center' | 'top' | 'bottom' | 'left' | 'right'
+  | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   | { readonly x: number; readonly y: number };
+
+export const POSITIONS = [
+  'top-left', 'top', 'top-right',
+  'left', 'center', 'right',
+  'bottom-left', 'bottom', 'bottom-right',
+] as const;
 
 export interface FitOptions {
   readonly width: number;
@@ -91,7 +99,15 @@ export type Op =
       readonly feather?: number;
     }
   | ({ readonly type: 'outline' } & OutlineOptions)
-  | ({ readonly type: 'smartCrop' } & SmartCropOptions);
+  | ({ readonly type: 'smartCrop' } & SmartCropOptions)
+  | {
+      /** Обрізає порожні краї до прямокутника суб'єкта. */
+      readonly type: 'trim';
+      /** Запас навколо суб'єкта як частка його більшої сторони. Типово 0. */
+      readonly padding?: number;
+      readonly threshold?: number;
+      readonly tier?: Tier;
+    };
 
 export interface Job {
   readonly ops: readonly Op[];

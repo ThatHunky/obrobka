@@ -28,6 +28,8 @@ class WebSegmenter implements WebSegmenterApi {
 
   readonly #d: ModelDescriptor;
   #session: ort.InferenceSession | null = null;
+  /** Триваюче завантаження — щоб два виклики load не створили дві сесії. */
+  #loading: Promise<void> | null = null;
 
   constructor(d: ModelDescriptor) {
     this.#d = d;
@@ -37,6 +39,18 @@ class WebSegmenter implements WebSegmenterApi {
 
   async load(onProgress?: (fraction: number) => void): Promise<void> {
     if (this.#session !== null) { onProgress?.(1); return; }
+    if (this.#loading !== null) {
+      // Повторний виклик під час завантаження чекає на той самий проміс,
+      // інакше ми скомпілювали б модель двічі й двічі витратили пам'ять.
+      await this.#loading;
+      onProgress?.(1);
+      return;
+    }
+    this.#loading = this.#doLoad(onProgress).finally(() => { this.#loading = null; });
+    return this.#loading;
+  }
+
+  async #doLoad(onProgress?: (fraction: number) => void): Promise<void> {
     const bytes = await fetchModel(`${BASE}/${this.#d.file}`, onProgress);
 
     const order: Provider[] = 'gpu' in navigator ? ['webgpu', 'wasm'] : ['wasm'];
