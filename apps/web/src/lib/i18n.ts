@@ -49,6 +49,23 @@ export interface Dict {
   errNoImage: string;
   errNoClipboardApi: string;
   units: { kb: string; mb: string; ms: string };
+  crop: {
+    section: string;
+    ratio: string;
+    ratioFree: string;
+    swap: string;
+    anchor: string;
+    anchorHint: string;
+    framing: string;
+    framingNone: string;
+    framingSmart: string;
+    framingSmartHint: string;
+    framingTrim: string;
+    framingTrimHint: string;
+    padding: string;
+    needsModel: string;
+  };
+  positions: Record<string, string>;
   stats: {
     title: string;
     runs: string;
@@ -114,6 +131,27 @@ const uk: Dict = {
   errNoImage: 'У буфері обміну немає зображення.',
   errNoClipboardApi: 'Браузер не дає читати буфер обміну. Натисніть Ctrl+V або Cmd+V.',
   units: { kb: 'КБ', mb: 'МБ', ms: 'мс' },
+  crop: {
+    section: 'Обрізка',
+    ratio: 'Співвідношення',
+    ratioFree: 'вільно',
+    swap: 'Поміняти сторони місцями',
+    anchor: 'Прив’язка',
+    anchorHint: 'Куди тягнути вміст, коли він не заповнює кадр або не вміщується',
+    framing: 'Кадрування',
+    framingNone: 'Не обрізати',
+    framingSmart: 'За суб’єктом',
+    framingSmartHint: 'Кадр будується навколо того, що модель визнала головним',
+    framingTrim: 'Прибрати порожні краї',
+    framingTrimHint: 'Обрізає до прямокутника суб’єкта, без нав’язаного співвідношення',
+    padding: 'Запас',
+    needsModel: 'потрібна модель',
+  },
+  positions: {
+    'top-left': 'вгорі ліворуч', top: 'вгорі', 'top-right': 'вгорі праворуч',
+    left: 'ліворуч', center: 'по центру', right: 'праворуч',
+    'bottom-left': 'внизу ліворуч', bottom: 'внизу', 'bottom-right': 'внизу праворуч',
+  },
   stats: {
     title: 'Скільки цим користуються',
     runs: 'обробок',
@@ -185,6 +223,27 @@ const en: Dict = {
   errNoImage: 'There is no image in the clipboard.',
   errNoClipboardApi: 'This browser will not read the clipboard. Press Ctrl+V or Cmd+V.',
   units: { kb: 'kB', mb: 'MB', ms: 'ms' },
+  crop: {
+    section: 'Cropping',
+    ratio: 'Aspect ratio',
+    ratioFree: 'free',
+    swap: 'Swap sides',
+    anchor: 'Anchor',
+    anchorHint: 'Where to pull the content when it does not fill the frame, or overflows it',
+    framing: 'Framing',
+    framingNone: 'No cropping',
+    framingSmart: 'On the subject',
+    framingSmartHint: 'The frame is built around whatever the model considers the subject',
+    framingTrim: 'Trim empty edges',
+    framingTrimHint: 'Crops to the subject rectangle, with no aspect ratio imposed',
+    padding: 'Margin',
+    needsModel: 'needs a model',
+  },
+  positions: {
+    'top-left': 'top left', top: 'top', 'top-right': 'top right',
+    left: 'left', center: 'centre', right: 'right',
+    'bottom-left': 'bottom left', bottom: 'bottom', 'bottom-right': 'bottom right',
+  },
   stats: {
     title: 'How much this gets used',
     runs: 'runs',

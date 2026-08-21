@@ -1,5 +1,5 @@
 import * as Comlink from 'comlink';
-import type { FitMode, Job, Op, OutputFormat, RGBA, Tier } from '@obrobka/core';
+import type { FitMode, Job, Op, OutputFormat, Position, RGBA, Tier } from '@obrobka/core';
 
 export type Provider = 'webgpu' | 'wasm';
 
@@ -17,6 +17,10 @@ export interface WidgetState {
   readonly feather: number;
   readonly shrink: number;
   readonly despeckle: boolean;
+  readonly position: Position;
+  /** Ні / кадр за суб'єктом / обрізка порожніх країв. */
+  readonly framing: 'none' | 'smart' | 'trim';
+  readonly framingPadding: number;
   readonly outlineOn: boolean;
   readonly outlineWidth: number;
   readonly outlineColor: string;
@@ -43,6 +47,7 @@ export function parseHexColor(hex: string): RGBA {
  */
 export function buildJob(s: WidgetState): Job {
   const ops: Op[] = [];
+
   if (s.removeBg) {
     ops.push({
       type: 'removeBackground',
@@ -59,6 +64,20 @@ export function buildJob(s: WidgetState): Job {
       });
     }
   }
+
+  // Кадрування — після зняття фону, але до приведення в розмір: інакше
+  // поля рамки вже з'їли б частину кадру, з якого ми обрізаємо.
+  if (s.framing === 'smart') {
+    ops.push({
+      type: 'smartCrop',
+      aspectRatio: s.width / s.height,
+      padding: s.framingPadding,
+      tier: s.tier,
+    });
+  } else if (s.framing === 'trim') {
+    ops.push({ type: 'trim', padding: s.framingPadding, tier: s.tier });
+  }
+
   ops.push({
     type: 'fit',
     width: s.width,
@@ -66,11 +85,18 @@ export function buildJob(s: WidgetState): Job {
     mode: s.mode,
     pad: s.padTransparent ? 'transparent' : parseHexColor(s.padColor),
     allowUpscale: s.allowUpscale,
+    position: s.position,
   });
+
   return {
     ops,
     output: s.format === 'png' ? { format: 'png' } : { format: s.format, quality: s.quality },
   };
+}
+
+/** Чи потрібна модель для поточного стану. */
+export function needsModel(s: WidgetState): boolean {
+  return s.removeBg || s.framing !== 'none';
 }
 
 export interface WorkerApi {

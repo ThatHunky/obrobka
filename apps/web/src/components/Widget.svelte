@@ -1,9 +1,10 @@
 <script lang="ts">
   import { sniffMime } from '@obrobka/codecs';
-  import type { FitMode, OutputFormat, Tier } from '@obrobka/core';
-  import { buildJob, getWorker, type WidgetState } from '../lib/worker-api.js';
+  import type { FitMode, OutputFormat, Position, Tier } from '@obrobka/core';
+  import { buildJob, getWorker, needsModel, type WidgetState } from '../lib/worker-api.js';
   import FitModePicker from './FitModePicker.svelte';
   import TierPicker from './TierPicker.svelte';
+  import PositionPicker from './PositionPicker.svelte';
   import { dict, type Locale } from '../lib/i18n.js';
   import * as Comlink from 'comlink';
 
@@ -41,7 +42,44 @@
     outlineOn: preset?.outlineOn ?? false,
     outlineWidth: preset?.outlineWidth ?? 8,
     outlineColor: '#ffffff',
+    position: 'center',
+    framing: 'none',
+    framingPadding: 0.08,
   });
+
+  /** Співвідношення сторін як швидкі пресети. */
+  const ratios: { label: string; r: number | null }[] = [
+    { label: '1:1', r: 1 }, { label: '4:5', r: 4 / 5 }, { label: '3:2', r: 3 / 2 },
+    { label: '16:9', r: 16 / 9 }, { label: '9:16', r: 9 / 16 },
+  ];
+
+  function applyRatio(r: number): void {
+    // Довшу сторону лишаємо, коротшу перераховуємо — так користувач
+    // не втрачає роздільність, яку щойно задав.
+    if (r >= 1) state.height = Math.max(1, Math.round(state.width / r));
+    else state.width = Math.max(1, Math.round(state.height * r));
+    void process();
+  }
+
+  function swapSides(): void {
+    const w = state.width;
+    state.width = state.height;
+    state.height = w;
+    void process();
+  }
+
+  const activeRatio = $derived(
+    ratios.find((x) => x.r !== null && Math.abs(state.width / state.height - x.r) < 0.005)?.label
+      ?? null,
+  );
+
+  /** Прив'язка щось означає лише там, де є поля або обрізка. */
+  const anchorMatters = $derived(state.mode === 'contain' || state.mode === 'cover');
+
+  async function onFramingChange(): Promise<void> {
+    if (needsModel(state)) await warmUp();
+    await process();
+  }
 
   let downloadProgress = $state(0);
   let providerName = $state<string | null>(null);
@@ -219,7 +257,8 @@
     const started = performance.now();
     try {
       const copy = sourceBytes.slice();
-      const out = await getWorker().process(copy.buffer, sourceMime, buildJob(state));
+      const job = buildJob(state);
+      const out = await getWorker().process(copy.buffer, sourceMime, job);
       if (resultUrl !== '') URL.revokeObjectURL(resultUrl);
       const blob = new Blob([out], { type: `image/${state.format}` });
       resultUrl = URL.createObjectURL(blob);
@@ -314,6 +353,59 @@
 
   <FitModePicker bind:value={state.mode} {t} onchange={process} />
 
+  <div class="crop">
+    <div class="ratios">
+      <span class="cap">{t.crop.ratio}</span>
+      {#each ratios as r (r.label)}
+        <button
+          type="button"
+          class="chip sm"
+          class:on={activeRatio === r.label}
+          data-testid={`ratio-${r.label}`}
+          onclick={() => applyRatio(r.r!)}
+        >{r.label}</button>
+      {/each}
+      <button type="button" class="chip sm" title={t.crop.swap}
+              aria-label={t.crop.swap} data-testid="swap" onclick={swapSides}>⇄</button>
+      {#if activeRatio === null}<span class="free">{t.crop.ratioFree}</span>{/if}
+    </div>
+
+    <fieldset class="framing">
+      <legend>{t.crop.framing}</legend>
+      <div class="row">
+        {#each [
+          { id: 'none', label: t.crop.framingNone, hint: '' },
+          { id: 'smart', label: t.crop.framingSmart, hint: t.crop.framingSmartHint },
+          { id: 'trim', label: t.crop.framingTrim, hint: t.crop.framingTrimHint },
+        ] as const as o (o.id)}
+          <button
+            type="button"
+            class="chip"
+            class:on={state.framing === o.id}
+            title={o.hint}
+            data-testid={`framing-${o.id}`}
+            onclick={() => { state.framing = o.id; void onFramingChange(); }}
+          >
+            {o.label}
+            {#if o.id !== 'none'}<em>{t.crop.needsModel}</em>{/if}
+          </button>
+        {/each}
+      </div>
+      {#if state.framing !== 'none'}
+        <label class="field pad">
+          <span>{t.crop.padding} <em>{Math.round(state.framingPadding * 100)} %</em></span>
+          <input type="range" min="0" max="50" value={Math.round(state.framingPadding * 100)}
+                 oninput={(e) => { state.framingPadding = e.currentTarget.valueAsNumber / 100; }}
+                 onchange={process} />
+        </label>
+      {/if}
+    </fieldset>
+
+    {#if anchorMatters}
+      <PositionPicker bind:value={state.position} {t} onchange={process} />
+    {/if}
+  </div>
+
   <!-- Числові налаштування -->
   <div class="controls">
     <label class="field">
@@ -368,7 +460,7 @@
     </label>
   </div>
 
-  {#if state.removeBg}
+  {#if needsModel(state)}
     <TierPicker
       bind:value={state.tier}
       progress={downloadProgress}
@@ -377,7 +469,9 @@
       {t}
       onchange={onTierChange}
     />
+  {/if}
 
+  {#if state.removeBg}
     <div class="controls">
       <label class="field">
         <span>{t.shrink} <em>{state.shrink} px</em></span>
@@ -548,6 +642,42 @@
   .chip.on em { color: var(--accent); }
 
   /* Поля */
+  .crop {
+    display: grid;
+    gap: 1.1rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--bg-sunken);
+  }
+  @media (min-width: 46rem) {
+    .crop { grid-template-columns: 1fr auto; align-items: start; }
+    .crop .ratios { grid-column: 1 / -1; }
+  }
+
+  .ratios { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+  .cap {
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--fg-muted); margin-inline-end: 0.3rem;
+  }
+  .chip.sm { padding: 0.3rem 0.7rem; font-family: var(--font-mono); font-size: 0.78rem; }
+  .free { font-size: 0.78rem; color: var(--fg-faint); }
+
+  .framing { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .framing legend {
+    padding: 0; margin-bottom: 0.5rem;
+    font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-muted);
+  }
+  .framing .row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .framing .chip { flex-direction: column; align-items: flex-start; gap: 0.1rem; }
+  .framing .chip em {
+    font-style: normal; font-size: 0.68rem; color: var(--fg-faint);
+    text-transform: lowercase; letter-spacing: 0;
+  }
+  .framing .chip.on em { color: var(--accent); }
+  .pad { margin-top: 0.7rem; max-width: 16rem; }
+
   .controls {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
