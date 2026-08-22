@@ -110,10 +110,10 @@
     border: 1px solid color-mix(in oklab, var(--gold-600) 32%, transparent);
     font-size: 0.82rem; line-height: 1.5;
   }
-  .gps svg { flex: none; margin-top: 0.15rem; color: var(--gold-600); }
+  .gps svg { flex: none; margin-top: 0.15rem; color: var(--accent-text); }
   .gps strong { display: block; font-weight: 600; }
   .gps code { font-family: var(--font-mono); font-size: 0.78rem; color: var(--fg-muted); }
-  .gps a { margin-inline-start: 0.4rem; color: var(--accent); }
+  .gps a { margin-inline-start: 0.4rem; color: var(--accent-text); }
 
   dl {
     display: grid; grid-template-columns: auto 1fr;

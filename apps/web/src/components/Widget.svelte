@@ -935,7 +935,7 @@
     border-color: var(--accent);
     background: color-mix(in oklab, var(--accent-bg) 14%, var(--bg-raised));
   }
-  .chip.on em { color: var(--accent); }
+  .chip.on em { color: var(--accent-text); }
 
   /* Поля */
   .crop {
@@ -971,7 +971,7 @@
     font-style: normal; font-size: 0.68rem; color: var(--fg-faint);
     text-transform: lowercase; letter-spacing: 0;
   }
-  .framing .chip.on em { color: var(--accent); }
+  .framing .chip.on em { color: var(--accent-text); }
   .pad { margin-top: 0.7rem; max-width: 16rem; }
 
   .upscale { border: 0; padding: 0; margin: 0; min-width: 0; }
@@ -986,7 +986,7 @@
     font-style: normal; font-family: var(--font-mono);
     font-size: 0.68rem; color: var(--fg-faint);
   }
-  .upscale .chip.on em { color: var(--accent); }
+  .upscale .chip.on em { color: var(--accent-text); }
   .tip.warn { color: var(--gold-600); }
   .tiles {
     font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-muted);
@@ -1009,7 +1009,7 @@
   .field > span em {
     font-style: normal;
     font-family: var(--font-mono);
-    color: var(--accent);
+    color: var(--accent-text);
   }
   .field input[type='number'], .field select {
     padding: 0.55rem 0.7rem;
@@ -1098,7 +1098,7 @@
 
   .pane { display: grid; gap: 0.45rem; min-width: 0; }
   .pane figcaption { display: flex; align-items: center; gap: 0.5rem; }
-  .tag.accent { border-color: var(--accent); color: var(--accent); }
+  .tag.accent { border-color: var(--accent); color: var(--accent-text); }
 
   .canvas {
     display: grid;

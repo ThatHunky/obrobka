@@ -1,5 +1,6 @@
 ---
 import '../styles/base.css';
+import { FONT_PRELOAD } from '../lib/fonts.js';
 
 interface Props {
   title: string;
@@ -13,9 +14,9 @@ const site = 'https://obrobka.dobrovolskyi.com.ua';
 const other = locale === 'uk' ? 'en' : 'uk';
 const defaultPath = locale === 'uk' ? path : alternatePath;
 const t = locale === 'uk'
-  ? { skip: 'Перейти до вмісту', theme: 'Перемкнути тему', home: 'Головна',
+  ? { skip: 'Перейти до вмісту', theme: 'Перемкнути тему',
       tagline: 'Обробка зображень у браузері', privacy: 'Файли не залишають ваш пристрій' }
-  : { skip: 'Skip to content', theme: 'Toggle theme', home: 'Home',
+  : { skip: 'Skip to content', theme: 'Toggle theme',
       tagline: 'In-browser image processing', privacy: 'Files never leave your device' };
 ---
 <!doctype html>
@@ -49,12 +50,23 @@ const t = locale === 'uk'
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" href="/sitemap-index.xml" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
-    />
+    {/*
+      Шрифти лежать у нас, а не в Google.
+
+      Виміряно на продакшені: CSS із fonts.googleapis.com коштував 375 мс
+      на два кілобайти — це рукостискання з чужим хостом, і воно блокувало
+      показ. Потім починався другий чужий хост, fonts.gstatic.com, зі своїм
+      рукостисканням. Наші файли з уже відкритого з'єднання приходили за
+      14–16 мс. Заразом зникла дрібна невідповідність: сайт обіцяє, що файл
+      не залишає пристрій, а браузер тим часом ходив у Google.
+
+      Підвантажуємо наперед лише Inter — це основний текст, від якого
+      залежить перший показ. Заголовковий Unbounded і моноширинний
+      приходять звичайним шляхом зі swap.
+    */}
+    {FONT_PRELOAD.map((href) => (
+      <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />
+    ))}
 
     <!-- Тема застосовується до першого малювання, щоб не було спалаху -->
     <script is:inline>
@@ -73,7 +85,13 @@ const t = locale === 'uk'
 
     <header class="site-head">
       <div class="wrap head-inner">
-        <a href={locale === 'uk' ? '/' : '/en/'} class="brand" aria-label={t.home}>
+        <!--
+          Без aria-label: тут стояло «Головна», і доступне ім'я посилання
+          розходилось із видимим словом «obrobka». Для читача з екрана це
+          різні речі, а керування голосом просто не спрацьовує — сказати
+          можна лише те, що видно. Видимий текст сам є найкращим іменем.
+        -->
+        <a href={locale === 'uk' ? '/' : '/en/'} class="brand">
           <span class="brand-mark checker" aria-hidden="true"></span>
           <span class="brand-name">obrobka</span>
         </a>
@@ -212,5 +230,5 @@ const t = locale === 'uk'
     color: var(--fg-faint);
   }
   .foot-inner a { color: var(--fg-muted); text-decoration: none; }
-  .foot-inner a:hover { color: var(--accent); }
+  .foot-inner a:hover { color: var(--accent-text); }
 </style>

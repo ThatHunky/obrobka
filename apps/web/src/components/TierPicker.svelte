@@ -75,14 +75,14 @@
   }
   /* Той рівень, що зараз качається, пульсує — видно, за чим саме прогрес */
   .tier.loading { border-color: var(--accent); }
-  .tier.loading .size { color: var(--accent); }
+  .tier.loading .size { color: var(--accent-text); }
   @keyframes pulse { 50% { opacity: 0.55; } }
   .tier.loading .size { animation: pulse 1.1s ease-in-out infinite; }
 
   .label { font-weight: 600; font-size: 0.9rem; }
   .scope { font-size: 0.75rem; color: var(--fg-muted); }
   .size { font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-faint); }
-  .tier.on .size { color: var(--accent); }
+  .tier.on .size { color: var(--accent-text); }
 
   .bar {
     margin-top: 0.6rem; height: 4px; border-radius: 999px;
@@ -94,6 +94,6 @@
     transition: width var(--dur) var(--ease-out);
   }
   .note { margin-top: 0.4rem; font-size: 0.78rem; color: var(--fg-faint); }
-  .note.warn { color: var(--gold-600); }
+  .note.warn { color: var(--accent-text); }
   .note.ok { color: var(--fg-muted); }
 </style>

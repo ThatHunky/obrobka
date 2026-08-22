@@ -109,7 +109,7 @@
     color: var(--fg-muted);
   }
   .count { font-size: 0.8rem; color: var(--fg-faint); }
-  .progress { margin-inline-start: auto; font-size: 0.8rem; color: var(--accent); }
+  .progress { margin-inline-start: auto; font-size: 0.8rem; color: var(--accent-text); }
 
   .bar {
     margin: 0.6rem 0; height: 4px; border-radius: 999px;
@@ -137,12 +137,12 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .status { flex: none; font-family: var(--font-mono); font-size: 0.74rem; color: var(--fg-faint); }
-  li.working .status { color: var(--accent); }
+  li.working .status { color: var(--accent-text); }
   li.done .status { color: var(--fg-muted); }
-  .err { color: var(--gold-600); }
+  .err { color: var(--accent-text); }
   li.error .name { opacity: 0.65; }
 
-  .failed { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--gold-600); }
+  .failed { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--accent-text); }
   .note { margin: 0.5rem 0 0; font-size: 0.76rem; line-height: 1.5; color: var(--fg-faint); }
   .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; }
   .actions em { font-style: normal; opacity: 0.8; font-size: 0.76rem; }
