@@ -81,6 +81,19 @@ describe('матриця сторінок', () => {
     }
   });
 
+  it('українські тексти пишуть дроби комою', () => {
+    // «0.41 %» замість «0,41 %» — та дрібниця, за якою впізнають
+    // машинний переклад. Співвідношення на кшталт 1.91:1 і назви
+    // на кшталт 4K до дробів не належать.
+    for (const p of uk) {
+      const text = `${p.intro} ${p.faq.map((f) => `${f.q} ${f.a}`).join(' ')}`;
+      const bad = [...text.matchAll(/\d+\.\d+/g)]
+        .map((m) => m[0])
+        .filter((n) => !text.includes(`${n}:`));
+      expect(bad, p.id).toEqual([]);
+    }
+  });
+
   it('мова не тече між локалями', () => {
     for (const p of en) {
       expect(`${p.title} ${p.description} ${p.h1} ${p.intro} ${p.steps.join(' ')}`, p.id)

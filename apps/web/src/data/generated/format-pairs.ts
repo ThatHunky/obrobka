@@ -2,7 +2,7 @@ import {
   FORMATS, GRAPHIC_EDGE_ERROR, SOURCES, TARGETS, losesAlpha, relativeToJpeg,
   type SourceFormat, type TargetFormat,
 } from '../formats.js';
-import { KEEP_SIZE, biPage, type ToolEntry } from '../page.js';
+import { KEEP_SIZE, biPage, decimal, type ToolEntry } from '../page.js';
 
 /**
  * Сторінки «формат → формат».
@@ -81,7 +81,8 @@ function losslessFaq(from: SourceFormat, to: TargetFormat, locale: 'uk' | 'en') 
     ? {
         q: 'Наскільки помітні втрати?',
         a: `На плоскій графіці при якості 80 ${FORMATS[to].label} дає максимальне відхилення `
-          + `каналу ${e.maxDeviation} і ${e.visiblePercent} % пікселів, що помітно відхилились. `
+          + `каналу ${e.maxDeviation} і ${decimal(e.visiblePercent, 2, 'uk')} % пікселів, `
+          + `що помітно відхилились. `
           + `Для фотографії це нечутно, для схеми чи скріншота з різкими краями — вже видно, `
           + `і там надійніший PNG.`
       }
@@ -206,12 +207,12 @@ function intro(from: SourceFormat, to: TargetFormat, locale: 'uk' | 'en'): strin
   // Тому тут порівняння саме цієї пари: воно різне для кожної.
   const fromKb = FORMATS[from].photoKb;
   const toKb = FORMATS[to].photoKb;
+  const ratio = fromKb > toKb ? fromKb / toKb : toKb / fromKb;
+  const digits = ratio >= 10 ? 0 : 1;
   const times = fromKb > toKb
-    ? `у ${(fromKb / toKb).toFixed(fromKb / toKb >= 10 ? 0 : 1)} раза легшим`
-    : `у ${(toKb / fromKb).toFixed(toKb / fromKb >= 10 ? 0 : 1)} раза важчим`;
-  const timesEn = fromKb > toKb
-    ? `${(fromKb / toKb).toFixed(fromKb / toKb >= 10 ? 0 : 1)}× lighter`
-    : `${(toKb / fromKb).toFixed(toKb / fromKb >= 10 ? 0 : 1)}× heavier`;
+    ? `у ${decimal(ratio, digits, 'uk')} раза легшим`
+    : `у ${decimal(ratio, digits, 'uk')} раза важчим`;
+  const timesEn = `${decimal(ratio, digits, 'en')}× ${fromKb > toKb ? 'lighter' : 'heavier'}`;
 
   return locale === 'uk'
     ? `На тому самому знімку ${FORMATS[to].label} виходить ${times} за ${UK_CASE[from]}: `

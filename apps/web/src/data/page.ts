@@ -75,3 +75,15 @@ export function biPage(
     ...make(locale),
   }));
 }
+
+/**
+ * Дробове число в тому вигляді, у якому його пишуть у цій мові.
+ *
+ * Українська відділяє дробову частину комою. «0.41 %» замість «0,41 %» —
+ * рівно та дрібниця, за якою впізнають машинний переклад, і виправляти
+ * її по одному місцю означає забути в другому.
+ */
+export function decimal(value: number, digits: number, locale: 'uk' | 'en'): string {
+  const text = value.toFixed(digits);
+  return locale === 'uk' ? text.replace('.', ',') : text;
+}
