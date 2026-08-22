@@ -9,3 +9,8 @@
 
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Сервісворкер не можна кешувати надовго: інакше нова версія не приїде,
+# доки браузер не вирішить перевірити старий файл.
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate

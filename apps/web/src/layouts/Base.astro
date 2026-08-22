@@ -16,10 +16,11 @@ const defaultPath = locale === 'uk' ? path : alternatePath;
 const t = locale === 'uk'
   ? { skip: 'Перейти до вмісту', theme: 'Перемкнути тему',
       tagline: 'Обробка зображень у браузері', privacy: 'Файли не залишають ваш пристрій',
-      tools: 'Усі інструменти' }
+      tools: 'Усі інструменти', storage: 'Збережене' }
   : { skip: 'Skip to content', theme: 'Toggle theme',
       tagline: 'In-browser image processing', privacy: 'Files never leave your device',
-      tools: 'Every tool' };
+      tools: 'Every tool', storage: 'Stored data' };
+const storagePath = locale === 'uk' ? '/збережене/' : '/en/storage/';
 const toolsPath = locale === 'uk' ? '/інструменти/' : '/en/tools/';
 ---
 <!doctype html>
@@ -70,6 +71,20 @@ const toolsPath = locale === 'uk' ? '/інструменти/' : '/en/tools/';
     {FONT_PRELOAD.map((href) => (
       <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />
     ))}
+
+    <!--
+      Сервісворкер реєструємо після завантаження, а не в head: інакше він
+      конкурує за смугу саме тоді, коли сторінка ще малюється.
+    -->
+    <script is:inline>
+      if ('serviceWorker' in navigator) {
+        addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {
+            /* Без офлайну сайт працює так само — це не привід нічого ламати. */
+          });
+        });
+      }
+    </script>
 
     <!-- Тема застосовується до першого малювання, щоб не було спалаху -->
     <script is:inline>
@@ -130,6 +145,7 @@ const toolsPath = locale === 'uk' ? '/інструменти/' : '/en/tools/';
       <div class="wrap foot-inner">
         <p>{t.privacy}</p>
         <a href={toolsPath}>{t.tools}</a>
+        <a href={storagePath}>{t.storage}</a>
         <a href="https://dobrovolskyi.com.ua" rel="me author">Всеволод Добровольський</a>
       </div>
     </footer>

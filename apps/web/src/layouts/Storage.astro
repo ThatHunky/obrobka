@@ -1,0 +1,95 @@
+---
+import Base from './Base.astro';
+import StoragePanel from '../components/Storage.svelte';
+
+/**
+ * Сторінка «що збережено».
+ *
+ * Специфікація вимагала її ще в M1: моделі важать до 84 МБ і лишаються
+ * в браузері назавжди — саме заради того, щоб не качатись удруге.
+ * Але це чуже місце на чужому пристрої, і показати його треба тут,
+ * а не змушувати людину шукати в налаштуваннях браузера.
+ */
+interface Props { locale: 'uk' | 'en' }
+const { locale } = Astro.props;
+
+const path = locale === 'uk' ? '/збережене/' : '/en/storage/';
+const alternatePath = locale === 'uk' ? '/en/storage/' : '/збережене/';
+
+const t = locale === 'uk'
+  ? {
+      title: 'Що obrobka зберігає у вашому браузері — і як це прибрати',
+      description: 'Моделі кешуються, щоб не качатись удруге. Тут видно, скільки вони '
+        + 'займають, і є кнопка очищення. Зображення не зберігаються ніде й ніколи.',
+      h1: 'Збережене',
+      lede: 'Обробка відбувається у вашій вкладці, тож моделі мусять там і жити. '
+        + 'Качаються вони один раз і лишаються в кеші браузера — інакше кожне '
+        + 'видалення фону починалося б із завантаження мегабайтів.',
+      images: 'Зображень тут немає й не буде',
+      imagesBody: 'Файли, які ви обробляєте, не зберігаються ніде: ані на сервері, '
+        + 'ані в кеші браузера. Вони живуть у пам’яті вкладки, доки вона відкрита, '
+        + 'і зникають разом із нею.',
+      what: 'Що саме займає місце',
+      offline: 'Робота без мережі',
+      offlineBody: 'Оболонка сайту зберігається сервісворкером, а кодеки — при першому '
+        + 'використанні. Після цього конвертація й зміна розміру працюють без мережі. '
+        + 'Видалення фону й збільшення потребують моделі: якщо вона вже в кеші — '
+        + 'теж працюють.',
+    }
+  : {
+      title: 'What obrobka stores in your browser — and how to clear it',
+      description: 'Models are cached so they do not download twice. Here you can see how '
+        + 'much space they take and clear them. Images are never stored anywhere.',
+      h1: 'Stored data',
+      lede: 'The processing happens inside your tab, so the models have to live there too. '
+        + 'They download once and stay in the browser cache — otherwise every background '
+        + 'removal would start with megabytes of downloading.',
+      images: 'No images here, and there never will be',
+      imagesBody: 'The files you process are not stored anywhere: not on a server, not in '
+        + 'the browser cache. They live in the tab’s memory while it is open and disappear '
+        + 'with it.',
+      what: 'What is taking up space',
+      offline: 'Working without a network',
+      offlineBody: 'The site shell is stored by a service worker, and the codecs are stored '
+        + 'the first time they are used. After that, converting and resizing work offline. '
+        + 'Background removal and upscaling need a model: if it is already cached, those '
+        + 'work too.',
+    };
+---
+<Base
+  title={t.title}
+  description={t.description}
+  locale={locale}
+  path={path}
+  alternatePath={alternatePath}
+>
+  <article class="wrap narrow storage-page">
+    <header class="head">
+      <span class="tag">{locale === 'uk' ? 'Ваш браузер' : 'Your browser'}</span>
+      <h1>{t.h1}</h1>
+      <p class="lede">{t.lede}</p>
+    </header>
+
+    <section>
+      <h2>{t.what}</h2>
+      <StoragePanel client:load locale={locale} />
+    </section>
+
+    <section>
+      <h2>{t.images}</h2>
+      <p>{t.imagesBody}</p>
+    </section>
+
+    <section>
+      <h2>{t.offline}</h2>
+      <p>{t.offlineBody}</p>
+    </section>
+  </article>
+</Base>
+
+<style>
+  .storage-page { display: grid; gap: clamp(1.8rem, 4vw, 2.6rem); }
+  .head { display: grid; gap: 0.9rem; justify-items: start; }
+  section h2 { margin-bottom: 0.7rem; }
+  section p { color: var(--fg-muted); max-width: 62ch; }
+</style>

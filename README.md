@@ -21,6 +21,7 @@ Ukrainian-first, English second. MIT licensed.
 | **Upscale** | Swin2SR ×2 or ×4, tiled so memory stays flat |
 | **Batch** | many files at once, out as a ZIP |
 | **Metadata** | see what the file records; the result carries none of it |
+| **Offline** | a service worker stores the shell; codecs are cached on first use |
 
 Everything runs as WebAssembly in a Web Worker. There is no server, no upload,
 and no account.
@@ -72,6 +73,27 @@ Deflating WebP saves 0.1 % for ten times the CPU — as expected. Deflating our
 PNGs saves **15.2 %**, because the encoder compresses fast and leaves
 redundancy behind. Level 4 for PNG, store for everything else.
 
+**The landing pages carry measured numbers, which is the only reason they
+deserve to exist.** Eighty-odd pages produced by substituting a format name
+into one template is the definition of doorway spam. So every format-pair page
+states what that pair actually costs, from a corpus of ten photographs and
+three flat graphics run through our own codecs
+([`scripts/measure-formats.mjs`](scripts/measure-formats.mjs)):
+
+| | photo | flat graphics | % of JPEG (photo) |
+|---|---|---|---|
+| PNG | 1489 kB | 26 kB | 1314 % |
+| JPEG | 113 kB | 9 kB | 100 % |
+| WebP | 85 kB | 3 kB | 75 % |
+| AVIF | 45 kB | 1 kB | 40 % |
+
+That measurement also refuted an assumption of mine. I expected JPEG to wreck
+hard edges on flat graphics; at quality 80 it turned out to be the *most*
+faithful of the three lossy formats — peak channel deviation 56 and 0.07 % of
+pixels visibly off, against WebP's 69 / 0.41 % and AVIF's 112 / 0.43 % — while
+still being three times heavier than WebP. So the pages say "for diagrams and
+screenshots, PNG is safer" rather than "just use WebP".
+
 ## Architecture
 
 ```
@@ -84,6 +106,7 @@ packages/onnx-node        onnxruntime-node + on-disk cache
 packages/onnx-web         onnxruntime-web + Cache Storage, WebGPU → WASM
 packages/metadata         EXIF reading (exifr) and byte-level stripping
 packages/heic             libheif, isolated — LGPL, loaded on demand
+apps/web/src/data         the page matrix: format pairs, platform sizes, tasks
 packages/contract-tests   one suite, run against both adapters
 apps/web                  Astro + Svelte island, PWA
 apps/mcp                  stdio MCP server

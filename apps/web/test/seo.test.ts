@@ -81,8 +81,14 @@ describe('сторінки видалення фону', () => {
     const { generatedPages } = await import('../src/data/generated/index.js');
     const handWritten = (await readdir(join(import.meta.dirname, '..', 'src', 'data', 'tools')))
       .filter((f) => f.endsWith('.yaml')).length;
-    // Головна й каталог, у двох локаліях кожна.
-    const standalone = 4;
+    // Окремі сторінки рахуємо з файлів, а не числом: це вже втретє
+    // ламало тест при додаванні сторінки, і щоразу «виправлення»
+    // зводилось до підкручування константи, а не до перевірки.
+    const pagesDir = join(import.meta.dirname, '..', 'src', 'pages');
+    const isPage = (f: string): boolean =>
+      f.endsWith('.astro') && !f.startsWith('[') && f !== '404.astro';
+    const standalone = (await readdir(pagesDir)).filter(isPage).length
+      + (await readdir(join(pagesDir, 'en'))).filter(isPage).length;
 
     const idx = await readFile(join(dist, 'sitemap-0.xml'), 'utf8');
     expect((idx.match(/<loc>/g) ?? []).length)

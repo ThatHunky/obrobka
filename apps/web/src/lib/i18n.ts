@@ -99,6 +99,18 @@ export interface Dict {
     modelIsSerial: string;
     settingsApply: string;
   };
+  storage: {
+    reading: string;
+    empty: string;
+    total: string;
+    clear: string;
+    clearing: string;
+    offlineReady: string;
+    offlineNot: string;
+    quota: (used: string, total: string) => string;
+    errRead: string;
+    errClear: string;
+  };
   exif: {
     title: string;
     none: string;
@@ -247,6 +259,21 @@ const uk: Dict = {
       + 'пам’яті, а швидше стало б лише вдвічі.',
     settingsApply: 'Налаштування нижче діють на всі файли пакета.',
   },
+  storage: {
+    reading: 'Дивлюся, що збережено…',
+    empty: 'Моделей у кеші немає. Вони з’являться, коли ви скористаєтесь '
+      + 'видаленням фону або збільшенням.',
+    total: 'Разом',
+    clear: 'Очистити кеш моделей',
+    clearing: 'Очищаю…',
+    offlineReady: 'Оболонку збережено — сайт відкриється без мережі.',
+    offlineNot: 'Оболонку ще не збережено. Перезавантажте сторінку, '
+      + 'і вона стане доступною без мережі.',
+    quota: (used, total) => `Цей сайт займає ${used} з приблизно ${total}, `
+      + 'доступних йому у вашому браузері.',
+    errRead: 'Не вдалося прочитати кеш',
+    errClear: 'Не вдалося очистити кеш',
+  },
   exif: {
     title: 'Що записано у файлі',
     none: 'Метаданих немає',
@@ -383,6 +410,20 @@ const en: Dict = {
     modelIsSerial: 'With a model, files go one at a time: four sessions would eat over a '
       + 'gigabyte of memory and only run twice as fast.',
     settingsApply: 'The settings below apply to every file in the batch.',
+  },
+  storage: {
+    reading: 'Checking what is stored…',
+    empty: 'No models cached. They appear once you use background removal or upscaling.',
+    total: 'Total',
+    clear: 'Clear the model cache',
+    clearing: 'Clearing…',
+    offlineReady: 'The shell is stored — the site will open without a network.',
+    offlineNot: 'The shell is not stored yet. Reload the page and it will become '
+      + 'available offline.',
+    quota: (used, total) => `This site takes ${used} of roughly ${total} available to it `
+      + 'in your browser.',
+    errRead: 'Could not read the cache',
+    errClear: 'Could not clear the cache',
   },
   exif: {
     title: 'What the file records',

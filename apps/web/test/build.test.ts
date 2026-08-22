@@ -91,3 +91,31 @@ describe('стилі компонентів у збірці', () => {
     expect(css).toContain('.gps');
   });
 });
+
+/**
+ * Сторінка «Збережене» лише читає й чистить Cache Storage.
+ *
+ * Через головний вхід @obrobka/onnx-web вона тягла за собою весь рантайм
+ * ONNX: 37,7 КБ, із яких Lighthouse нарахував 94 % невиконаного. Після
+ * переходу на підшлях /cache лишилось 3,4 КБ. Один необережний імпорт
+ * поверне все назад, і помітити це можна буде хіба випадково.
+ */
+describe('вага острівців', () => {
+  async function islandBytes(prefix: string): Promise<number> {
+    const { readdir, stat } = await import('node:fs/promises');
+    const dir = join(dist, '_astro');
+    const file = (await readdir(dir)).find((f) => f.startsWith(prefix) && f.endsWith('.js'));
+    expect(file, `не знайдено чанк ${prefix}*`).toBeDefined();
+    return (await stat(join(dir, file!))).size;
+  }
+
+  it('панель збереженого не тягне рантайм ONNX', async () => {
+    expect(await islandBytes('Storage.')).toBeLessThan(8 * 1024);
+  });
+
+  it('віджет лишається єдиним важким острівцем', async () => {
+    // Йому рантайм справді потрібен — тут перевірка лише на те,
+    // що ми не роздули його ще й чимось стороннім.
+    expect(await islandBytes('Widget.')).toBeLessThan(120 * 1024);
+  });
+});
