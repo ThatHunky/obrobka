@@ -15,9 +15,12 @@ const other = locale === 'uk' ? 'en' : 'uk';
 const defaultPath = locale === 'uk' ? path : alternatePath;
 const t = locale === 'uk'
   ? { skip: 'Перейти до вмісту', theme: 'Перемкнути тему',
-      tagline: 'Обробка зображень у браузері', privacy: 'Файли не залишають ваш пристрій' }
+      tagline: 'Обробка зображень у браузері', privacy: 'Файли не залишають ваш пристрій',
+      tools: 'Усі інструменти' }
   : { skip: 'Skip to content', theme: 'Toggle theme',
-      tagline: 'In-browser image processing', privacy: 'Files never leave your device' };
+      tagline: 'In-browser image processing', privacy: 'Files never leave your device',
+      tools: 'Every tool' };
+const toolsPath = locale === 'uk' ? '/інструменти/' : '/en/tools/';
 ---
 <!doctype html>
 <html lang={locale}>
@@ -97,6 +100,12 @@ const t = locale === 'uk'
         </a>
         <p class="brand-tag">{t.tagline}</p>
         <div class="head-actions">
+          <!--
+            Каталог у шапці, а не лише у футері: без нього вісімдесят
+            сторінок доступні тільки з sitemap, тобто пошуковику, але
+            не людині.
+          -->
+          <a class="nav" href={toolsPath}>{t.tools}</a>
           <a class="lang" href={alternatePath} hreflang={other} lang={other}>
             {other === 'en' ? 'EN' : 'UK'}
           </a>
@@ -120,6 +129,7 @@ const t = locale === 'uk'
     <footer class="site-foot">
       <div class="wrap foot-inner">
         <p>{t.privacy}</p>
+        <a href={toolsPath}>{t.tools}</a>
         <a href="https://dobrovolskyi.com.ua" rel="me author">Всеволод Добровольський</a>
       </div>
     </footer>
@@ -207,7 +217,22 @@ const t = locale === 'uk'
     transition: color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out),
                 transform var(--dur-fast) var(--ease-spring);
   }
-  .lang:hover, .theme:hover { color: var(--fg); border-color: var(--line-strong); transform: translateY(-1px); }
+  .lang:hover, .theme:hover, .nav:hover {
+    color: var(--fg); border-color: var(--line-strong); transform: translateY(-1px);
+  }
+  .nav {
+    display: inline-grid; place-items: center;
+    padding: 0 0.7rem; height: 2rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg-raised);
+    color: var(--fg-muted);
+    font-size: 0.8rem;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out),
+                transform var(--dur-fast) var(--ease-spring);
+  }
 
   .theme .i-moon { display: none; }
   :global(:root[data-theme='dark']) .theme .i-sun { display: none; }

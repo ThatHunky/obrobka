@@ -1,10 +1,30 @@
 ---
 import { getCollection } from 'astro:content';
 import Tool from '../layouts/Tool.astro';
+import { relatedTo, type Listed } from '../lib/catalogue.js';
 
+/**
+ * Сторінки-інструменти з двох джерел: написані руками у YAML і породжені
+ * матрицею форматів, платформ та задач. Маршрут між ними не розрізняє —
+ * форма запису однакова, і саме тому шаблон один.
+ */
 export async function getStaticPaths() {
-  const entries = await getCollection('tools');
+  const entries = [...await getCollection('tools'), ...await getCollection('generated')];
   const byId = new Map(entries.map((e) => [e.id, e]));
+
+  // Перехресні посилання рахуються один раз на всю збірку: без них
+  // кожна сторінка була б тупиком, до якого веде лише sitemap.
+  const listed: Listed[] = entries.map((e) => ({
+    id: e.id,
+    group: e.data.group,
+    locale: e.data.locale,
+    slug: e.data.slug,
+    h1: e.data.h1,
+    description: e.data.description,
+  }));
+  const byIdListed = new Map(listed.map((l) => [l.id, l]));
+
+  const taken = new Map<string, string>();
   return entries.map((entry) => {
     const pair = byId.get(entry.data.pair);
     if (pair === undefined) {
@@ -13,13 +33,27 @@ export async function getStaticPaths() {
       );
     }
     const prefix = entry.data.locale === 'uk' ? '' : 'en/';
+    const slug = `${prefix}${entry.data.slug}`;
+
+    // Написана руками сторінка й породжена можуть зіткнутись слагами.
+    // Мовчки виграє одна з них, і виявиться це вже на продакшені.
+    const clash = taken.get(slug);
+    if (clash !== undefined) {
+      throw new Error(`Адресу /${slug}/ займають двоє: ${clash} і ${entry.id}`);
+    }
+    taken.set(slug, entry.id);
+
     return {
-      params: { slug: `${prefix}${entry.data.slug}` },
-      props: { entry, pairSlug: pair.data.slug },
+      params: { slug },
+      props: {
+        data: entry.data,
+        pairSlug: pair.data.slug,
+        related: relatedTo(byIdListed.get(entry.id)!, listed),
+      },
     };
   });
 }
 
-const { entry, pairSlug } = Astro.props;
+const { data, pairSlug, related } = Astro.props;
 ---
-<Tool entry={entry} pairSlug={pairSlug} />
+<Tool data={data} pairSlug={pairSlug} related={related} />

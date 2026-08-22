@@ -78,12 +78,15 @@ describe('сторінки видалення фону', () => {
     // новий лендінг «ламав» би тест, і його правили б, не дивлячись,
     // що саме змінилось. Так тест ловить те, що має, — зниклу сторінку.
     const { readdir } = await import('node:fs/promises');
-    const landings = (await readdir(join(import.meta.dirname, '..', 'src', 'data', 'tools')))
+    const { generatedPages } = await import('../src/data/generated/index.js');
+    const handWritten = (await readdir(join(import.meta.dirname, '..', 'src', 'data', 'tools')))
       .filter((f) => f.endsWith('.yaml')).length;
-    const indexes = 2; // головна українською та англійською
+    // Головна й каталог, у двох локаліях кожна.
+    const standalone = 4;
 
     const idx = await readFile(join(dist, 'sitemap-0.xml'), 'utf8');
-    expect((idx.match(/<loc>/g) ?? []).length).toBe(landings + indexes);
+    expect((idx.match(/<loc>/g) ?? []).length)
+      .toBe(handWritten + generatedPages().length + standalone);
   });
 
   it('нові сторінки M3 у sitemap', async () => {
@@ -99,5 +102,56 @@ describe('сторінки видалення фону', () => {
     const html = await readFile(join(dist, 'heic-в-jpg', 'index.html'), 'utf8');
     expect(html).toMatch(/mode&quot;:\[\d+,&quot;inside&quot;\]/);
     expect(html).toMatch(/width&quot;:\[\d+,20000\]/);
+  });
+});
+
+/**
+ * Каталог і llms.txt — єдині два шляхи, якими до породжених сторінок
+ * можна дійти не через sitemap. Каталогом ходить людина, файлом — агент.
+ */
+describe('каталог і llms.txt', () => {
+  it('каталог перелічує всі сторінки своєї локалі', async () => {
+    const { generatedPages } = await import('../src/data/generated/index.js');
+    const { readdir } = await import('node:fs/promises');
+    const handWritten = (await readdir(join(import.meta.dirname, '..', 'src', 'data', 'tools')))
+      .filter((f) => f.endsWith('.uk.yaml')).length;
+    const expected = handWritten + generatedPages().filter((p) => p.locale === 'uk').length;
+
+    const html = await readFile(join(dist, 'інструменти', 'index.html'), 'utf8');
+    const links = new Set((html.match(/href="\/[^"]*\/"/g) ?? []));
+    // Плюс посилання на головну в шапці й підвалі.
+    expect(links.size).toBeGreaterThanOrEqual(expected);
+  });
+
+  it('каталог доступний з кожної сторінки', async () => {
+    const html = await readFile(join(dist, 'png-в-webp', 'index.html'), 'utf8');
+    expect(html).toContain('/інструменти/');
+  });
+
+  it('англійська сторінка веде в англійський каталог, а не в український', async () => {
+    const html = await readFile(join(dist, 'en', 'png-to-webp', 'index.html'), 'utf8');
+    expect(html).toContain('/en/tools/');
+    expect(html).not.toContain('href="/інструменти/"');
+  });
+
+  it('llms.txt описує межі, а не лише перелік', async () => {
+    const txt = await readFile(join(dist, 'llms.txt'), 'utf8');
+    expect(txt).toContain('## Чого не вміє');
+    expect(txt).toContain('npx obrobka-mcp');
+    // Кожна сторінка має бути перелічена — інакше файл бреше про повноту.
+    const { generatedPages } = await import('../src/data/generated/index.js');
+    for (const p of generatedPages().slice(0, 12)) {
+      expect(txt, p.id).toContain(p.locale === 'uk' ? `/${p.slug}/` : `/en/${p.slug}/`);
+    }
+  });
+
+  it('перехресні посилання ведуть на сторінки, які існують', async () => {
+    const { readdir } = await import('node:fs/promises');
+    const html = await readFile(join(dist, 'png-в-webp', 'index.html'), 'utf8');
+    const related = [...html.matchAll(/class="related"[\s\S]*?<\/ul>/g)].join('');
+    const hrefs = [...related.matchAll(/href="\/([^"]+)\/"/g)].map((m) => m[1]!);
+    expect(hrefs.length).toBeGreaterThan(3);
+    const dirs = new Set(await readdir(dist));
+    for (const h of hrefs) expect(dirs.has(h.split('/')[0]!), h).toBe(true);
   });
 });

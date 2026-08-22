@@ -1,0 +1,154 @@
+---
+import Base from './Base.astro';
+import { getCollection } from 'astro:content';
+import { catalogue, pathOf, type Listed } from '../lib/catalogue.js';
+
+/**
+ * Каталог усіх інструментів.
+ *
+ * Без нього породжені сторінки існують лише у sitemap: пошуковик про них
+ * дізнається, а людина з сайту до них не дійде жодним шляхом. Тому це
+ * не «сторінка заради посилань», а єдине місце, де видно, що взагалі є.
+ */
+interface Props { locale: 'uk' | 'en' }
+const { locale } = Astro.props;
+
+const entries = [...await getCollection('tools'), ...await getCollection('generated')];
+const all: Listed[] = entries.map((e) => ({
+  id: e.id,
+  group: e.data.group,
+  locale: e.data.locale,
+  slug: e.data.slug,
+  h1: e.data.h1,
+  description: e.data.description,
+}));
+
+const sections = catalogue(all, locale);
+const total = all.filter((p) => p.locale === locale).length;
+
+const t = locale === 'uk'
+  ? {
+      title: `Усі інструменти obrobka — ${total} сторінок для роботи із зображеннями`,
+      description: 'Конвертація між форматами, розміри під платформи та окремі задачі — '
+        + 'усе виконується у браузері, без завантаження на сервер.',
+      h1: 'Усі інструменти',
+      lede: `${total} сторінок, і кожна робить одну справу. Усе рахується у вашій вкладці — `
+        + 'зображення не надсилається на жоден сервер.',
+      groups: {
+        task: 'Задачі',
+        format: 'Конвертація між форматами',
+        preset: 'Розміри під платформи',
+      },
+      hints: {
+        task: 'Те, що робиться із зображенням: прибрати фон, стиснути, збільшити, обрізати краї.',
+        format: 'Кожна сторінка несе виміряні розміри саме для цієї пари й чесне '
+          + 'застереження про те, що втрачається.',
+        preset: 'Готовий кадр під конкретне місце. Розмір і співвідношення можна змінити.',
+      },
+    }
+  : {
+      title: `Every obrobka tool — ${total} pages for working with images`,
+      description: 'Conversion between formats, sizes for platforms and individual tasks — '
+        + 'all of it runs in the browser, with nothing uploaded.',
+      h1: 'Every tool',
+      lede: `${total} pages, each doing one thing. It all runs inside your tab — the image is `
+        + 'never sent to a server.',
+      groups: {
+        task: 'Tasks',
+        format: 'Converting between formats',
+        preset: 'Sizes for platforms',
+      },
+      hints: {
+        task: 'Things done to an image: remove the background, compress, upscale, trim edges.',
+        format: 'Each page carries measured sizes for that exact pair and an honest note '
+          + 'on what gets lost.',
+        preset: 'A ready frame for a particular place. Size and ratio remain editable.',
+      },
+    };
+
+const path = locale === 'uk' ? '/інструменти/' : '/en/tools/';
+const alternatePath = locale === 'uk' ? '/en/tools/' : '/інструменти/';
+const site = 'https://obrobka.dobrovolskyi.com.ua';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: t.h1,
+  url: `${site}${path}`,
+  hasPart: sections.flatMap((s) => s.pages.map((p) => ({
+    '@type': 'WebPage',
+    name: p.h1,
+    url: `${site}${pathOf(p)}`,
+  }))),
+};
+---
+<Base
+  title={t.title}
+  description={t.description}
+  locale={locale}
+  path={path}
+  alternatePath={alternatePath}
+>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+
+  <article class="wrap catalogue">
+    <header class="head">
+      <span class="tag">{locale === 'uk' ? 'Працює у вашому браузері' : 'Runs in your browser'}</span>
+      <h1>{t.h1}</h1>
+      <p class="lede">{t.lede}</p>
+    </header>
+
+    {sections.map((section) => (
+      <section class="group">
+        <h2>{t.groups[section.group]}</h2>
+        <p class="hint">{t.hints[section.group]}</p>
+        <ul>
+          {section.pages.map((p) => (
+            <li>
+              <a href={pathOf(p)}>
+                <strong>{p.h1}</strong>
+                <span>{p.description}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </article>
+</Base>
+
+<style>
+  .catalogue { display: grid; gap: clamp(2rem, 5vw, 3.2rem); }
+  .head { display: grid; gap: 0.9rem; justify-items: start; }
+
+  .group h2 { margin-bottom: 0.35rem; }
+  .hint { color: var(--fg-muted); font-size: 0.95rem; max-width: 60ch; }
+
+  ul {
+    list-style: none; padding: 0; margin: 1.2rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 0.6rem;
+  }
+  li a {
+    display: grid; gap: 0.25rem;
+    height: 100%;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--bg-raised);
+    color: inherit;
+    text-decoration: none;
+    transition: transform var(--dur-fast) var(--ease-spring),
+                border-color var(--dur) var(--ease-out);
+  }
+  li a:hover { transform: translateY(-2px); border-color: var(--accent); }
+  li strong { font-size: 0.95rem; }
+  li span {
+    font-size: 0.8rem; line-height: 1.45;
+    color: var(--fg-muted);
+    /* Опис довгий — лишаємо два рядки, далі багатокрапка */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
