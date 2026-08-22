@@ -248,3 +248,40 @@ U+0400-045F і U+0490-0491) і генерує `src/styles/fonts.css` разом 
 писали руками, і кожна правка тексту тягла б перегенерацію з величезним diff.
 
 `llms.txt` генерується з тих самих даних маршрутом `src/pages/llms.txt.ts`.
+
+
+## robots.txt і агенти
+
+`robots.txt` — наш власний файл із `apps/web/public/`. Так було не завжди.
+
+Cloudflare уміє підміняти його керованою версією на рівні зони, і саме
+це тут і стояло: `is_robots_txt_managed: true`. Та версія віддавала
+`Disallow: /` для ClaudeBot, GPTBot, Google-Extended, CCBot,
+Applebot-Extended, Bytespider, meta-externalagent і Amazonbot — тобто
+мовчки скасовувала і `llms.txt`, і саму ідею агентної підтримки.
+
+Вимкнено за рішенням власника сайту:
+
+```bash
+set -a; . ~/.config/cloudflare/env; set +a
+curl -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"is_robots_txt_managed":false,"crawler_protection":"enabled"}' \
+  "https://api.cloudflare.com/client/v4/zones/<zone>/bot_management"
+```
+
+**`crawler_protection` доводиться передавати явно.** Запит лише з
+`is_robots_txt_managed:false` вимкнув заодно і його — API міняє більше,
+ніж просять. Другим викликом повернуто; обидва налаштування чудово
+уживаються.
+
+Налаштування діє на **всю зону** `dobrovolskyi.com.ua`, не лише на цей
+піддомен.
+
+Перевірено після зміни: ClaudeBot, GPTBot, Googlebot і PerplexityBot
+отримують 200 і справжній HTML на `/`, `/llms.txt` і сторінці
+інструмента — жодної перевірки браузера.
+
+Два тести в `apps/web/e2e/fonts.spec.ts` стережуть це на продакшені
+(локально пропускаються — про налаштування зони локальний сервер нічого
+не знає). Логіку перевірено проти старого вмісту: на ньому обидва падають.

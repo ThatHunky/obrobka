@@ -1,3 +1,7 @@
+# Агентам тут раді: llms.txt описує, що вміє інструмент, чого не вміє
+# і як звертатися до нього через MCP без браузера взагалі.
+# llms.txt: https://obrobka.dobrovolskyi.com.ua/llms.txt
+
 User-agent: *
 Allow: /
 
