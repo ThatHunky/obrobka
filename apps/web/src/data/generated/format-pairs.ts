@@ -264,11 +264,16 @@ export function formatPairPages(): ToolEntry[] {
           title: locale === 'uk'
             ? `Конвертувати ${UK_CASE[from]} у ${FORMATS[to].label} онлайн — у браузері, без завантаження`
             : `Convert ${FORMATS[from].label} to ${FORMATS[to].label} online — in the browser, nothing uploaded`,
+          // Опис — це те, що покаже пошук. Спільний шаблон на всі пари
+          // дав би п'ятнадцять однакових рядків у видачі, тож тут
+          // виміряне число саме цього переходу.
           description: locale === 'uk'
-            ? `Перетворіть ${UK_CASE[from]} на ${FORMATS[to].label} просто у вкладці. `
-              + `Файл не залишає ваш пристрій. Виміряні розміри й чесні застереження про втрати.`
-            : `Turn ${FORMATS[from].label} into ${FORMATS[to].label} right in your tab. The file `
-              + `never leaves your device. Measured sizes and honest notes on what is lost.`,
+            ? `${UK_CASE[from]} → ${FORMATS[to].label}: ${FORMATS[to].photoKb} КБ проти `
+              + `${FORMATS[from].photoKb || '—'} КБ на кадрі 1200×800. Просто у вкладці, `
+              + `файл не залишає ваш пристрій.`
+            : `${FORMATS[from].label} → ${FORMATS[to].label}: ${FORMATS[to].photoKb} kB against `
+              + `${FORMATS[from].photoKb || '—'} kB on a 1200×800 frame. Right in your tab, `
+              + `the file never leaves your device.`,
           h1: locale === 'uk'
             ? `${UK_CASE[from]} у ${FORMATS[to].label}`
             : `${FORMATS[from].label} to ${FORMATS[to].label}`,

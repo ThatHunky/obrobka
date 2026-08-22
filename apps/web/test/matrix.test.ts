@@ -73,11 +73,16 @@ describe('матриця сторінок', () => {
     }
   });
 
-  it('вступи різні — інакше це один текст під різними адресами', () => {
+  it('вступи й описи різні — інакше це один текст під різними адресами', () => {
+    // Опис перевіряється нарівні зі вступом: саме він показується у видачі,
+    // і саме його я спершу проґавив — п'ятнадцять пар форматів мали
+    // однаковий опис, що було видно неозброєним оком у каталозі.
     for (const set of [uk, en]) {
-      const intros = set.map((p) => p.intro);
-      const dupes = intros.filter((t, i) => intros.indexOf(t) !== i);
-      expect(dupes.length, `${dupes.length} повторів`).toBe(0);
+      for (const key of ['intro', 'description'] as const) {
+        const values = set.map((p) => p[key]);
+        const dupes = values.filter((t, i) => values.indexOf(t) !== i);
+        expect(dupes.length, `${key}: ${dupes.length} повторів`).toBe(0);
+      }
     }
   });
 

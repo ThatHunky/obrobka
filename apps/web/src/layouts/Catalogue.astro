@@ -2,6 +2,7 @@
 import Base from './Base.astro';
 import { getCollection } from 'astro:content';
 import { catalogue, pathOf, type Listed } from '../lib/catalogue.js';
+import { plural } from '../lib/i18n.js';
 
 /**
  * Каталог усіх інструментів.
@@ -26,13 +27,16 @@ const all: Listed[] = entries.map((e) => ({
 const sections = catalogue(all, locale);
 const total = all.filter((p) => p.locale === locale).length;
 
+// «41 сторінок» замість «41 сторінка» — помилка, яку видно з першого рядка.
+const pages = `${total} ${plural(total, 'сторінка', 'сторінки', 'сторінок')}`;
+
 const t = locale === 'uk'
   ? {
-      title: `Усі інструменти obrobka — ${total} сторінок для роботи із зображеннями`,
+      title: `Усі інструменти obrobka — ${pages} для роботи із зображеннями`,
       description: 'Конвертація між форматами, розміри під платформи та окремі задачі — '
         + 'усе виконується у браузері, без завантаження на сервер.',
       h1: 'Усі інструменти',
-      lede: `${total} сторінок, і кожна робить одну справу. Усе рахується у вашій вкладці — `
+      lede: `${pages}, і кожна робить одну справу. Усе рахується у вашій вкладці — `
         + 'зображення не надсилається на жоден сервер.',
       groups: {
         task: 'Задачі',

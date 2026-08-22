@@ -132,7 +132,7 @@ export interface Dict {
  * Українська має три форми множини, і «3 файлів» замість «3 файли» —
  * саме та дрібниця, за якою видно машинний переклад.
  */
-function plural(n: number, one: string, few: string, many: string): string {
+export function plural(n: number, one: string, few: string, many: string): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   if (mod10 === 1 && mod100 !== 11) return one;
