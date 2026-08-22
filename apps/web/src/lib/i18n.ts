@@ -17,6 +17,8 @@ export interface Dict {
   presets: { sticker: string; avatar: string; og: string; fullhd: string };
   width: string;
   height: string;
+  /** Плейсхолдер, коли розмір береться з самого файлу. */
+  sizeFromFile: string;
   format: string;
   formats: { png: string; webp: string; jpeg: string; avif: string };
   quality: string;
@@ -149,6 +151,7 @@ const uk: Dict = {
   presets: { sticker: 'Стікер Telegram', avatar: 'Аватар', og: 'OG-image', fullhd: 'Full HD' },
   width: 'Ширина',
   height: 'Висота',
+  sizeFromFile: 'як в оригіналі',
   format: 'Формат',
   formats: {
     png: 'PNG · без втрат', webp: 'WebP · компактний',
@@ -301,6 +304,7 @@ const en: Dict = {
   presets: { sticker: 'Telegram sticker', avatar: 'Avatar', og: 'OG image', fullhd: 'Full HD' },
   width: 'Width',
   height: 'Height',
+  sizeFromFile: 'same as source',
   format: 'Format',
   formats: {
     png: 'PNG · lossless', webp: 'WebP · compact',

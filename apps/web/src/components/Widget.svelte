@@ -13,6 +13,7 @@
   import PositionPicker from './PositionPicker.svelte';
   import ExifPanel from './ExifPanel.svelte';
   import BatchPanel from './BatchPanel.svelte';
+  import { KEEP_SIZE } from '../data/page.js';
   import { dict, type Locale } from '../lib/i18n.js';
   import * as Comlink from 'comlink';
 
@@ -113,6 +114,18 @@
       ?? null,
   );
 
+  /**
+   * Чи стоїть у стані ознака «нічого не масштабувати».
+   *
+   * Сторінки конвертації ставлять межу 20000×20000 саме для цього.
+   * Число робоче, але показувати його людині немає сенсу: поки файл
+   * не обрано, справжнього розміру ще ніхто не знає, а щойно обрано —
+   * поля заповнюються розміром оригіналу.
+   */
+  const sizeUnset = $derived(
+    state.width === KEEP_SIZE.width && state.height === KEEP_SIZE.height,
+  );
+
   /** Прив'язка щось означає лише там, де є поля або обрізка. */
   const anchorMatters = $derived(state.mode === 'contain' || state.mode === 'cover');
 
@@ -186,6 +199,15 @@
   let sourceSize = $state(0);
   let resultUrl = $state('');
   let resultSize = $state(0);
+  /**
+   * Справжній розмір результату.
+   *
+   * Показувати запитаний не можна: у режимах «без полів» і «покрити»
+   * вихід навмисно не збігається із заданим, а сторінки конвертації
+   * взагалі ставлять межу 20000, аби нічого не масштабувати — і саме
+   * ця межа опинялась у підписі та в імені файлу.
+   */
+  let resultDims = $state<{ w: number; h: number } | null>(null);
   let busy = $state(false);
   let error = $state('');
   let dragging = $state(false);
@@ -203,10 +225,23 @@
    * картинки — гірше, ніж було.
    */
   let batch = $state<BatchItem[]>([]);
+  /**
+   * Формат, яким закодовано те, що лежить у results.
+   *
+   * Не state.format: його можна змінити після прогону, і тоді архів
+   * отримав би імена з новим розширенням поверх старих байтів.
+   */
+  let batchFormat = $state<OutputFormat>('png');
   let batchDone = $state(0);
   let batchBusy = $state(false);
   let batchStale = $state(false);
   let abort: AbortController | null = null;
+  /**
+   * Лічильник прогонів. Скасований прогін ще доживає свої запити в
+   * воркерах, і його finally інакше обнуляв би стан того прогону,
+   * який його вже замінив: кнопка «Спинити» переставала працювати.
+   */
+  let runToken = 0;
   const sources = new Map<number, { bytes: Uint8Array; mime: string }>();
   const results = new Map<number, Uint8Array>();
   let nextId = 0;
@@ -264,15 +299,36 @@
     sourceSize = bytes.length;
     sourceName = file.name.replace(/\.[^.]+$/, '');
 
-    if (sourceUrl !== '') URL.revokeObjectURL(sourceUrl);
+    // Прев'ю будуємо до відкликання старого URL: якщо воно впаде,
+    // у стані має лишитись робоче зображення, а не відкликане посилання.
+    let preview: { url: string; dims: { w: number; h: number } | null };
     try {
-      const preview = await makePreview(bytes, mime);
-      sourceUrl = preview.url;
-      sourceDims = preview.dims;
+      preview = await makePreview(bytes, mime);
     } catch (e) {
       error = e instanceof Error ? e.message : t.errProcess;
       return;
     }
+    if (sourceUrl !== '') URL.revokeObjectURL(sourceUrl);
+    sourceUrl = preview.url;
+    sourceDims = preview.dims;
+
+    // Сторінки конвертації ставлять межу 20000×20000, щоб нічого не
+    // масштабувати. Як поведінка це правильно, але в полях розміру
+    // людина бачила саме ці двадцять тисяч. Щойно розмір оригіналу
+    // відомий — підставляємо його: результат той самий, а числа
+    // нарешті означають те, що показують.
+    if (preview.dims !== null
+      && state.width === KEEP_SIZE.width && state.height === KEEP_SIZE.height) {
+      state.width = preview.dims.w;
+      state.height = preview.dims.h;
+    }
+
+    // Результат попереднього файлу більше ні до чого: інакше при
+    // невдалій обробці посилання пропонувало б чужі байти під новим ім'ям.
+    if (resultUrl !== '') { URL.revokeObjectURL(resultUrl); resultUrl = ''; }
+    resultSize = 0;
+    resultDims = null;
+    elapsed = 0;
 
     // Метадані — довідкові: якщо не прочитались, обробку це не стосується.
     void getWorker().metadata(bytes.slice().buffer)
@@ -337,6 +393,19 @@
     meta = null;
   }
 
+  /**
+   * Спиняє пакет так, щоб із нього був вихід.
+   *
+   * Позначка «застаріло» тут обов'язкова: саме на ній тримається кнопка
+   * перезапуску. Без неї спинений пакет лишався б навіки в стані «у черзі»
+   * і єдиною доступною дією було б «Очистити» — тобто вибрати всі файли
+   * заново.
+   */
+  function cancelBatch(): void {
+    abort?.abort();
+    batchStale = true;
+  }
+
   /** Позначає, що результати застаріли: перезапускати двадцять файлів на кожен рух повзунка — знущання. */
   function markStale(): void {
     if (!isBatch) return;
@@ -353,7 +422,9 @@
     batchDone = 0;
     batchStale = false;
     batchBusy = true;
+    batchFormat = state.format;
     abort = new AbortController();
+    const token = ++runToken;
 
     const pending = batch.filter((i) => sources.has(i.id));
     for (const item of pending) { item.status = 'queued'; delete item.error; }
@@ -382,8 +453,11 @@
       });
       reportRun(job.ops.map((o) => o.type));
     } finally {
-      batchBusy = false;
-      abort = null;
+      // Лише свій прогін: застарілий не має права гасити стан наступного.
+      if (token === runToken) {
+        batchBusy = false;
+        abort = null;
+      }
     }
   }
 
@@ -393,12 +467,12 @@
     for (const item of batch) {
       const bytes = results.get(item.id);
       if (bytes === undefined) continue;
-      const name = uniqueName(taken, item.name, state.format);
+      const name = uniqueName(taken, item.name, batchFormat);
       item.outputName = name;
       entries[name] = bytes;
     }
     try {
-      const blob = await makeZip(entries, state.format);
+      const blob = await makeZip(entries, batchFormat);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -489,6 +563,12 @@
       const blob = new Blob([out], { type: `image/${state.format}` });
       resultUrl = URL.createObjectURL(blob);
       resultSize = blob.size;
+      resultDims = await new Promise((resolve) => {
+        const probe = new Image();
+        probe.onload = () => resolve({ w: probe.naturalWidth, h: probe.naturalHeight });
+        probe.onerror = () => resolve(null);
+        probe.src = resultUrl;
+      });
       elapsed = Math.round(performance.now() - started);
       reportRun(job.ops.map((o) => o.type));
     } catch (e) {
@@ -571,7 +651,7 @@
       busy={batchBusy}
       needsModel={needsModel(state)}
       {t}
-      oncancel={() => abort?.abort()}
+      oncancel={cancelBatch}
       onclear={clearBatch}
       onzip={() => void downloadZip()}
     />
@@ -689,11 +769,23 @@
   <div class="controls">
     <label class="field">
       <span>{t.width}</span>
-      <input type="number" min="1" max="20000" bind:value={state.width} onchange={process} />
+      <input
+        type="number" min="1" max="20000"
+        value={sizeUnset ? '' : state.width}
+        placeholder={t.sizeFromFile}
+        oninput={(e) => { state.width = e.currentTarget.valueAsNumber || state.width; }}
+        onchange={process}
+      />
     </label>
     <label class="field">
       <span>{t.height}</span>
-      <input type="number" min="1" max="20000" bind:value={state.height} onchange={process} />
+      <input
+        type="number" min="1" max="20000"
+        value={sizeUnset ? '' : state.height}
+        placeholder={t.sizeFromFile}
+        oninput={(e) => { state.height = e.currentTarget.valueAsNumber || state.height; }}
+        onchange={process}
+      />
     </label>
     <label class="field">
       <span>{t.format}</span>
@@ -830,7 +922,7 @@
           {/if}
         </div>
         <p class="meta">
-          {state.width}×{state.height} · {kb(resultSize)}
+          {#if resultDims}{resultDims.w}×{resultDims.h}{/if} · {kb(resultSize)}
           {#if ratio > 0}
             <span class="delta" class:good={ratio < 1}>
               {ratio < 1 ? '−' : '+'}{Math.abs(Math.round((1 - ratio) * 100))}%
@@ -845,7 +937,9 @@
       <a
         class="btn btn-accent download"
         href={resultUrl}
-        download={`${sourceName || 'image'}-${state.width}x${state.height}.${state.format}`}
+        download={`${sourceName || 'image'}${
+          resultDims ? `-${resultDims.w}x${resultDims.h}` : ''
+        }.${state.format}`}
         data-testid="download"
       >
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none"

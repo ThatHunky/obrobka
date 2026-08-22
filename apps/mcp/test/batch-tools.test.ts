@@ -77,7 +77,9 @@ describe('strip_metadata', () => {
     const out = join(dir, 'clean.jpg');
     const r = await stripImageMetadata({ input: join(inDir, 'geotagged.jpg'), output: out });
     expect(r.removed).toContain('GPSLatitude');
-    expect(r.removed).toContain('Orientation');
+    expect(r.removed).toContain('Make');
+    // Орієнтація навмисно лишається: без неї знімок ляже набік.
+    expect(r.removed).not.toContain('Orientation');
     expect(r.bytesAfter).toBeLessThan(r.bytesBefore);
     expect((await readImageMetadata({ input: out })).hasGps).toBe(false);
   });

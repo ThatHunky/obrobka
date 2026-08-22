@@ -1,3 +1,4 @@
+group: task
 slug: прибрати-exif
 locale: uk
 pair: strip-exif.en

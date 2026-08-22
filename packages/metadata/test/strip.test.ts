@@ -38,18 +38,37 @@ describe('stripMetadata — JPEG', () => {
     expect(meta.orientation).toBe(6);
   });
 
-  it('прибирає EXIF і координати', async () => {
-    const clean = await stripMetadata(jpeg);
-    expect(hasMetadata(await readMetadata(clean))).toBe(false);
+  it('прибирає координати, камеру й дату', async () => {
+    const after = await readMetadata(await stripMetadata(jpeg));
+    expect(after.gps).toBeUndefined();
+    expect(after.camera).toBeUndefined();
+    expect(after.shot).toBeUndefined();
   });
 
-  it('прибирає APP1, але лишає APP0', async () => {
-    const before = jpegMarkers(jpeg);
+  it('лишає орієнтацію — інакше знімок ляже набік', async () => {
+    // Пікселі в JPEG лежать так, як їх зняла матриця; як їх показувати,
+    // каже теґ. Прибрати теґ, не чіпаючи пікселів, — розвернути фото.
+    const after = await readMetadata(await stripMetadata(jpeg));
+    expect(after.orientation).toBe(6);
+    // І це єдине, що лишилось: не перенесений старий блок, а новий.
+    expect(Object.keys(after.tags)).toEqual(['Orientation']);
+  });
+
+  it('лишає APP0 і не тягне старий APP1', async () => {
     const after = jpegMarkers(await stripMetadata(jpeg));
-    expect(before).toContain('e1');
-    expect(after).not.toContain('e1');
     // JFIF описує сам файл, а не того, хто його зняв.
     expect(after).toContain('e0');
+    // APP1 рівно один — той мінімальний, що ми зібрали самі.
+    expect(after.filter((m) => m === 'e1')).toHaveLength(1);
+  });
+
+  it('файл без орієнтації не отримує APP1 нізвідки', async () => {
+    const plain = withExif(await makeJpeg(IMG), buildExifApp1({
+      make: 'Apple', gps: { latitude: 50.45, longitude: 30.5233 },
+    }));
+    const after = await stripMetadata(plain);
+    expect(jpegMarkers(after)).not.toContain('e1');
+    expect(hasMetadata(await readMetadata(after))).toBe(false);
   });
 
   it('пікселі побайтово ті самі', async () => {

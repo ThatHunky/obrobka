@@ -103,9 +103,16 @@ export function buildJob(s: WidgetState): Job {
   };
 }
 
-/** Чи потрібна модель для поточного стану. */
+/**
+ * Чи потрібна модель для поточного стану.
+ *
+ * Збільшення теж рахується: Swin2SR — така сама сесія ONNX, як і
+ * сегментатор. Без нього пакет зі збільшенням вважався б вільним від
+ * моделі й розходився на чотири воркери, кожен зі своєю сесією та
+ * власним завантаженням ваг.
+ */
 export function needsModel(s: WidgetState): boolean {
-  return s.removeBg || s.framing !== 'none';
+  return s.removeBg || s.framing !== 'none' || s.upscale !== 1;
 }
 
 export interface TileProgress { stage: string; done: number; total: number }

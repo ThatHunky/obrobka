@@ -1,5 +1,5 @@
 import * as Comlink from 'comlink';
-import { runJob, type Job, type Mask, type RasterImage, type Tier } from '@obrobka/core';
+import { fit, runJob, type Job, type Mask, type RasterImage, type Tier } from '@obrobka/core';
 import { withDecoder } from '@obrobka/codecs';
 import { browserCodec } from '@obrobka/codecs/browser';
 import { decodeHeic } from '@obrobka/heic';
@@ -105,16 +105,17 @@ const api = {
   async preview(
     bytes: ArrayBuffer, mime: string, maxSide: number,
   ): Promise<{ buf: ArrayBuffer; width: number; height: number }> {
-    const source = new Uint8Array(bytes);
-    const out = await runJob(source, mime, {
-      ops: [{ type: 'fit', width: maxSide, height: maxSide, mode: 'inside' }],
-      output: { format: 'webp', quality: 82 },
-    }, ctx);
-    const decoded = await codec.decode(out, 'image/webp');
+    // Декодуємо самі, а не через runJob: звідси беруться справжні розміри
+    // оригіналу, які інтерфейс показує в «Було» і за якими рахує час
+    // збільшення. Раніше туди потрапляв розмір зменшеної копії, і оцінка
+    // виходила приблизно вдвадцятеро меншою за дійсність.
+    const img = await codec.decode(new Uint8Array(bytes), mime);
+    const small = fit(img, { width: maxSide, height: maxSide, mode: 'inside' });
+    const out = await codec.encode(small, { format: 'webp', quality: 82 });
     const copy = new Uint8Array(out.length);
     copy.set(out);
     return Comlink.transfer(
-      { buf: copy.buffer, width: decoded.width, height: decoded.height },
+      { buf: copy.buffer, width: img.width, height: img.height },
       [copy.buffer],
     );
   },

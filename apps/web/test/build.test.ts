@@ -51,11 +51,23 @@ describe('збірка сайту', () => {
 describe('стилі компонентів у збірці', () => {
   const componentsDir = join(import.meta.dirname, '..', 'src', 'components');
 
+  /**
+   * Увесь CSS збірки — і файлами, і вбудований у HTML.
+   *
+   * Astro вбудовує малі таблиці стилів просто в сторінку, тож перевіряти
+   * лише `_astro/*.css` означає вважати такі компоненти неоформленими.
+   */
   async function builtCss(): Promise<string> {
     const { readdir } = await import('node:fs/promises');
     const dir = join(dist, '_astro');
     const files = (await readdir(dir)).filter((f) => f.endsWith('.css'));
     const parts = await Promise.all(files.map((f) => readFile(join(dir, f), 'utf8')));
+
+    for (const page of ['index.html', join('en', 'storage', 'index.html'),
+      join('en', 'tools', 'index.html'), join('en', 'png-to-webp', 'index.html')]) {
+      const html = await readFile(join(dist, page), 'utf8');
+      for (const m of html.matchAll(/<style>([\s\S]*?)<\/style>/g)) parts.push(m[1]!);
+    }
     return parts.join('\n');
   }
 
@@ -80,7 +92,11 @@ describe('стилі компонентів у збірці', () => {
       const source = await readFile(join(componentsDir, name), 'utf8');
       const classes = declaredClasses(source);
       if (classes.length === 0) continue;
-      if (!classes.some((c) => css.includes(`.${c}`))) missing.push(name);
+      // Кожен клас, а не будь-який: `.name`, `.size` і `.error` трапляються
+      // одразу в кількох компонентів, тож `some` проходив навіть тоді, коли
+      // від самого компонента у збірці не лишилось нічого.
+      const absent = classes.filter((c) => !css.includes(`.${c}`));
+      if (absent.length > 0) missing.push(`${name} (${absent.join(', ')})`);
     }
     expect(missing, 'стилі цих компонентів не дійшли до збірки').toEqual([]);
   }, 30_000);

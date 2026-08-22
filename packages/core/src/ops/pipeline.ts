@@ -99,11 +99,17 @@ async function applyUpscale(
  *
  * Помилка читання нічого не зупиняє: биті EXIF трапляються, і це не привід
  * не обробити фотографію.
+ *
+ * HEIC — виняток. Там орієнтація живе в самому контейнері (властивість
+ * `irot`), і libheif застосовує її ще при декодуванні. Якби ми поверх
+ * цього наклали ще й теґ EXIF, знімок із обома позначками виїхав би
+ * на 180° від правильного.
  */
 async function autoOrient(
-  img: RasterImage, input: Uint8Array, job: Job, ctx: Context,
+  img: RasterImage, input: Uint8Array, mime: string, job: Job, ctx: Context,
 ): Promise<RasterImage> {
   if (job.autoOrient === false || ctx.metadata === undefined) return img;
+  if (mime === 'image/heic') return img;
   try {
     return orient(img, await ctx.metadata.readOrientation(input));
   } catch {
@@ -144,7 +150,7 @@ export async function runJob(
     throw new Error(`Формат ${job.output.format} не підтримується для запису`);
   }
 
-  let img = await autoOrient(await ctx.codec.decode(input, mime), input, job, ctx);
+  let img = await autoOrient(await ctx.codec.decode(input, mime), input, mime, job, ctx);
   const mask = job.ops.some((o) => NEEDS_MASK.has(o.type))
     ? await buildMask(img, job, ctx)
     : null;

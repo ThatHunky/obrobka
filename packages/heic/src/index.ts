@@ -58,6 +58,12 @@ function loadLibheif(): Promise<LibHeif> {
         throw new Error('Модуль libheif не має фабрики — несумісна версія');
       }
       return (factory as () => LibHeif)();
+    })
+    // Інакше одне обірване завантаження 1,46 МБ вимикало б HEIC назавжди:
+    // решта дев'ятнадцяти файлів пакета впала б миттєво й без шансу.
+    .catch((e: unknown) => {
+      loading = null;
+      throw e;
     });
   return loading;
 }

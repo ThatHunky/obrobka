@@ -4,6 +4,10 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff
 
+# Усе з хешем вмісту в імені: змінився файл — змінилось ім'я.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
 /*.wasm
   Cache-Control: public, max-age=31536000, immutable
 

@@ -53,6 +53,9 @@ let parser: Promise<Parser> | null = null;
  * не завантажать модуль двічі.
  */
 function loadParser(): Promise<Parser> {
+  // Відхилений проміс теж лишався б у кеші назавжди: ??= бачить
+  // не-undefined і більше не пробує. Одна обірвана мережа вимикала б
+  // читання EXIF — а отже й автоповорот — до кінця сеансу.
   parser ??= import('exifr').then((m) => {
     const mod = (m as { default?: { parse?: unknown }; parse?: unknown });
     const parse = mod.default?.parse ?? mod.parse;
@@ -60,6 +63,9 @@ function loadParser(): Promise<Parser> {
       throw new Error('Модуль exifr не має функції parse — несумісна версія');
     }
     return parse as Parser;
+  }).catch((e: unknown) => {
+    parser = null;
+    throw e;
   });
   return parser;
 }

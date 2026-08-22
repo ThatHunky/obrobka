@@ -1,4 +1,6 @@
 import { sniffMime } from '@obrobka/codecs';
+import { buildExifApp1, withExif } from './exif-writer.js';
+import { readMetadata } from './read.js';
 
 /**
  * Маркери JPEG, які треба прибрати.
@@ -123,6 +125,22 @@ function stripWebp(bytes: Uint8Array): Uint8Array {
   return out;
 }
 
+/**
+ * Повертає в очищений JPEG сам лише теґ орієнтації.
+ *
+ * Без цього зняття метаданих клало фотографію набік: пікселі в JPEG
+ * лежать так, як їх зняла матриця, а те, як їх показувати, каже теґ.
+ * Прибрати теґ, не чіпаючи пікселів, — означає розвернути знімок.
+ *
+ * Повертається рівно одне поле. Ані координат, ані камери, ані дати:
+ * новий APP1 будується з нуля, а не переноситься зі старого.
+ */
+async function keepOrientation(source: Uint8Array, clean: Uint8Array): Promise<Uint8Array> {
+  const { orientation } = await readMetadata(source);
+  if (orientation === undefined || orientation === 1) return clean;
+  return withExif(clean, buildExifApp1({ orientation }));
+}
+
 function concat(parts: readonly Uint8Array[]): Uint8Array {
   let total = 0;
   for (const part of parts) total += part.length;
@@ -147,7 +165,7 @@ function concat(parts: readonly Uint8Array[]): Uint8Array {
 export async function stripMetadata(bytes: Uint8Array): Promise<Uint8Array> {
   const mime = sniffMime(bytes);
   switch (mime) {
-    case 'image/jpeg': return stripJpeg(bytes);
+    case 'image/jpeg': return keepOrientation(bytes, stripJpeg(bytes));
     case 'image/png': return stripPng(bytes);
     case 'image/webp': return stripWebp(bytes);
     case 'image/avif':
