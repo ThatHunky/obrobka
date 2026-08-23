@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 import type {
-  FitMode, Job, Layer, Op, OutputFormat, Position, RasterImage, RGBA, Tier,
+  FitMode, Job, Layer, Mask, Op, OutputFormat, Position, RasterImage, RGBA, Tier,
 } from '@obrobka/core';
 import type { Metadata } from '@obrobka/metadata';
 
@@ -47,6 +47,8 @@ export interface WidgetState {
   readonly outlineWidth: number;
   readonly outlineColor: string;
   readonly layers: readonly UiLayer[];
+  /** Мазки пензля в координатах оригіналу. null — не малювали. */
+  readonly paint: { readonly keep: Mask | null; readonly erase: Mask | null };
 }
 
 export function parseHexColor(hex: string): RGBA {
@@ -106,6 +108,11 @@ function plainLayer(l: UiLayer): Layer {
   };
 }
 
+/** Маска мазка як звичайні дані — та сама причина, що й у plainLayer. */
+function plainMask(m: Mask): Mask {
+  return { data: new Uint8ClampedArray(m.data), width: m.width, height: m.height };
+}
+
 /**
  * Прив'язка як звичайний об'єкт.
  *
@@ -144,6 +151,17 @@ export function buildJob(s: WidgetState): Job {
         color: parseHexColor(s.outlineColor),
       });
     }
+  }
+
+  // Пензель — одразу після моделі й до всього, що рухає геометрію.
+  // Мазки лежать у координатах оригіналу: якби операція йшла після
+  // кадрування чи збільшення, вони поїхали б разом із кадром.
+  if (s.paint.keep !== null || s.paint.erase !== null) {
+    ops.push({
+      type: 'paint',
+      ...(s.paint.keep !== null ? { keep: plainMask(s.paint.keep) } : {}),
+      ...(s.paint.erase !== null ? { erase: plainMask(s.paint.erase) } : {}),
+    });
   }
 
   // Кадрування — після зняття фону, але до приведення в розмір: інакше

@@ -11,6 +11,7 @@ const base: WidgetState = {
   upscale: 1,
   zoom: 1,
   layers: [],
+  paint: { keep: null, erase: null },
 };
 
 const types = (s: WidgetState): string[] => buildJob(s).ops.map((o) => o.type);
@@ -235,6 +236,40 @@ describe('шари', () => {
       image: new Proxy(px(4, 4), {}),
     }), {});
     const job = buildJob({ ...base, layers: [proxied] });
+    expect(() => structuredClone(job)).not.toThrow();
+  });
+});
+
+const stroke = (w: number, h: number) => ({
+  data: new Uint8ClampedArray(w * h).fill(255), width: w, height: h,
+});
+
+describe('пензель', () => {
+  it('без мазків операції немає', () => {
+    expect(types(base)).toEqual(['fit']);
+  });
+
+  it('іде після зняття фону й до кадрування', () => {
+    expect(types({
+      ...base, removeBg: true, outlineOn: true, framing: 'smart', upscale: 2,
+      paint: { keep: null, erase: stroke(4, 4) },
+    })).toEqual(['removeBackground', 'outline', 'paint', 'smartCrop', 'upscale', 'fit']);
+  });
+
+  it('сам по собі, без моделі, теж працює', () => {
+    expect(types({ ...base, paint: { keep: null, erase: stroke(4, 4) } }))
+      .toEqual(['paint', 'fit']);
+  });
+
+  it('порожні маски в Job не їдуть', () => {
+    const op = buildJob({ ...base, paint: { keep: stroke(4, 4), erase: null } })
+      .ops.find((o) => o.type === 'paint') as { keep?: unknown; erase?: unknown };
+    expect(Object.keys(op).sort()).toEqual(['keep', 'type']);
+  });
+
+  it('мазки переживають structured clone', () => {
+    const proxied = new Proxy(stroke(4, 4), {});
+    const job = buildJob({ ...base, paint: { keep: null, erase: proxied } });
     expect(() => structuredClone(job)).not.toThrow();
   });
 });

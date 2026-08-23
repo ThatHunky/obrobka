@@ -60,6 +60,7 @@
     upscale: 1,
     zoom: 1,
     layers: [],
+    paint: { keep: null, erase: null },
   });
 
   let tileProgress = $state<{ done: number; total: number } | null>(null);
