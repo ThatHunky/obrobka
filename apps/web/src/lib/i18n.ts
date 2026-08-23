@@ -66,6 +66,10 @@ export interface Dict {
     framingTrimHint: string;
     padding: string;
     needsModel: string;
+    drag: string;
+    dragHint: string;
+    zoom: string;
+    reset: string;
   };
   positions: Record<string, string>;
   upscale: {
@@ -213,6 +217,10 @@ const uk: Dict = {
     framingTrimHint: 'Обрізає до прямокутника суб’єкта, без нав’язаного співвідношення',
     padding: 'Запас',
     needsModel: 'потрібна модель',
+    drag: 'Кадр',
+    dragHint: 'Тягніть зображення, щоб посунути кадр. Колесо або два пальці — наблизити.',
+    zoom: 'Наближення',
+    reset: 'Скинути кадр',
   },
   positions: {
     'top-left': 'вгорі ліворуч', top: 'вгорі', 'top-right': 'вгорі праворуч',
@@ -366,6 +374,10 @@ const en: Dict = {
     framingTrimHint: 'Crops to the subject rectangle, with no aspect ratio imposed',
     padding: 'Margin',
     needsModel: 'needs a model',
+    drag: 'Frame',
+    dragHint: 'Drag the image to move the frame. Wheel or two fingers to zoom.',
+    zoom: 'Zoom',
+    reset: 'Reset the frame',
   },
   positions: {
     'top-left': 'top left', top: 'top', 'top-right': 'top right',
