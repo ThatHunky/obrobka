@@ -5,6 +5,7 @@ import { crop } from './crop.js';
 import { applyMask } from './applyMask.js';
 import { outline } from './outline.js';
 import { composite } from './composite.js';
+import { paint } from './paint.js';
 import { smartCrop } from './smartCrop.js';
 import { trim } from './trim.js';
 import { despeckleMask, erodeMask, featherMask, fillMaskHoles } from './mask.js';
@@ -132,6 +133,7 @@ function applyOp(img: RasterImage, op: Op, mask: Mask | null): RasterImage {
     case 'smartCrop': return smartCrop(img, mask!, op);
     case 'trim': return trim(img, mask!, op);
     case 'composite': return composite(img, op.layers);
+    case 'paint': return paint(img, op);
     case 'upscale':
       throw new Error('Збільшення виконується окремо — сюди воно не має потрапляти');
     default: {

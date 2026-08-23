@@ -66,6 +66,26 @@ describe('runJob', () => {
     expect(out.data[2]).toBeGreaterThan(200);
   });
 
+  it('пензель робить пікселі під мазком прозорими', async () => {
+    let final: RasterImage | null = null;
+    const capturing: Codec = {
+      canDecode: (mime) => mime === 'image/fake',
+      canEncode: (format) => format === 'png',
+      decode: async () => source,
+      encode: async (img) => { final = img; return new Uint8Array(0); },
+    };
+    // Маска мазка навмисно менша за кадр: інтерфейс тримає їх зменшеними
+    const erase = { data: new Uint8ClampedArray(10 * 10).fill(0), width: 10, height: 10 };
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 10; x++) erase.data[y * 10 + x] = 255;
+
+    const job: Job = { ops: [{ type: 'paint', erase }], output: { format: 'png' } };
+    await runJob(input, 'image/fake', job, { codec: capturing });
+
+    const out = final as unknown as RasterImage;
+    expect(out.data[3]).toBe(0);
+    expect(out.data[(out.height - 1) * out.width * 4 + 3]).toBe(255);
+  });
+
   it('застосовує операції по порядку', async () => {
     const job: Job = {
       ops: [

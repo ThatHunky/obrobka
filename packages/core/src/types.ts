@@ -131,6 +131,19 @@ export interface SmartCropOptions {
   readonly tier?: Tier;
 }
 
+/**
+ * Ручні правки маски пензлем.
+ *
+ * Маски можуть бути будь-якого розміру: операція сама зведе їх до кадру.
+ * Інтерфейс тримає їх зменшеними, бо край мазка однаково м'який.
+ */
+export interface PaintOptions {
+  /** Де лишити напевно. 255 — лишити. */
+  readonly keep?: Mask;
+  /** Де прибрати напевно. 255 — прибрати. */
+  readonly erase?: Mask;
+}
+
 export type OutputFormat = 'png' | 'jpeg' | 'webp' | 'avif';
 
 export interface EncodeOptions {
@@ -159,6 +172,7 @@ export type Op =
       readonly fillHoles?: boolean;
     }
   | ({ readonly type: 'outline' } & OutlineOptions)
+  | ({ readonly type: 'paint' } & PaintOptions)
   | ({ readonly type: 'smartCrop' } & SmartCropOptions)
   | {
       /** Збільшення нейромережею. Виконується тайлами. */
