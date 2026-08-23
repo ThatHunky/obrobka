@@ -4,13 +4,14 @@ import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import * as z from 'zod';
 import {
   convertImage, resizeImage, removeBackground, smartCropImage, upscaleImage,
-  readImageMetadata, stripImageMetadata, processBatch,
+  readImageMetadata, stripImageMetadata, processBatch, compositeImages,
   type ToolResult,
 } from './tools.js';
 
 const FORMAT = z.enum(['png', 'jpeg', 'webp', 'avif']);
 const MODE = z.enum(['contain', 'cover', 'fill', 'inside', 'outside']);
 const TIER = z.enum(['fast', 'portrait', 'quality']);
+const BLEND = z.enum(['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten']);
 
 const RESULT = z.object({
   path: z.string(),
@@ -67,6 +68,36 @@ serveStdio(() => {
     }),
     outputSchema: RESULT,
   }, async (args) => report(await resizeImage(args)));
+
+  server.registerTool('composite_images', {
+    description:
+      'Накладає одне або кілька зображень поверх основи — логотип, наклейку, ' +
+      'водяний знак. Геометрія задається частками сторін основи, а не пікселями: ' +
+      'ті самі числа дадуть той самий кадр на файлах будь-якого розміру, ' +
+      'тож один набір значень годиться для цілої теки.',
+    inputSchema: z.object({
+      input: z.string().describe('Абсолютний шлях до основи'),
+      output: z.string().describe('Абсолютний шлях для запису результату'),
+      overlays: z.array(z.object({
+        path: z.string().describe('Абсолютний шлях до накладеного зображення'),
+        x: z.number().min(0).max(1).optional()
+          .describe('Центр як частка ширини основи. Типово 0.5.'),
+        y: z.number().min(0).max(1).optional()
+          .describe('Центр як частка висоти основи. Типово 0.5.'),
+        scale: z.number().positive().max(4).optional()
+          .describe('Ширина як частка ширини основи. Висота — з власного '
+            + 'співвідношення. Типово 0.35.'),
+        rotation: z.number().min(-360).max(360).optional()
+          .describe('Градуси за годинниковою стрілкою. Типово 0.'),
+        opacity: z.number().min(0).max(1).optional().describe('0..1. Типово 1.'),
+        blend: BLEND.optional().describe('Режим накладання. Типово normal.'),
+      })).min(1)
+        .describe('Порядок списку — порядок накладання: перший лежить найнижче'),
+      format: FORMAT.optional().describe('Формат результату. Типово png.'),
+      quality: z.number().int().min(1).max(100).optional().describe('Якість 1..100'),
+    }),
+    outputSchema: RESULT,
+  }, async (args) => report(await compositeImages(args)));
 
   server.registerTool('remove_background', {
     description:

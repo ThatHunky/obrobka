@@ -1,6 +1,10 @@
 import { basename, extname, join } from 'node:path';
 import { glob, mkdir } from 'node:fs/promises';
-import { runJob, type FitMode, type Job, type Op, type OutputFormat, type Tier } from '@obrobka/core';
+import {
+  runJob,
+  type BlendMode, type FitMode, type Job, type Layer, type Op,
+  type OutputFormat, type Tier,
+} from '@obrobka/core';
 import { withDecoder } from '@obrobka/codecs';
 import { nodeCodec } from '@obrobka/codecs/node';
 import { decodeHeic } from '@obrobka/heic';
@@ -337,4 +341,56 @@ export async function processBatch(args: BatchArgs): Promise<BatchResult> {
   }
 
   return { outputs, errors, skipped: found.length - selected.length };
+}
+
+export interface CompositeOverlay {
+  readonly path: string;
+  /** Центр як частка ширини основи. Типово 0.5. */
+  readonly x?: number | undefined;
+  /** Центр як частка висоти основи. Типово 0.5. */
+  readonly y?: number | undefined;
+  /** Ширина як частка ширини основи. Типово 0.35. */
+  readonly scale?: number | undefined;
+  readonly rotation?: number | undefined;
+  readonly opacity?: number | undefined;
+  readonly blend?: BlendMode | undefined;
+}
+
+export interface CompositeArgs {
+  readonly input: string;
+  readonly output: string;
+  readonly overlays: readonly CompositeOverlay[];
+  readonly format?: OutputFormat | undefined;
+  readonly quality?: number | undefined;
+}
+
+/**
+ * Накладає зображення поверх іншого.
+ *
+ * Геометрія нормалізована, тож один виклик із тими самими числами дасть
+ * той самий кадр на файлах різного розміру — це і є випадок водяного
+ * знака на цілій теці.
+ */
+export async function compositeImages(args: CompositeArgs): Promise<ToolResult> {
+  if (args.overlays.length === 0) {
+    throw new Error('Потрібне хоча б одне накладене зображення');
+  }
+  const layers: Layer[] = [];
+  for (const o of args.overlays) {
+    const { bytes, mime } = await readImage(o.path);
+    layers.push({
+      image: await codec.decode(bytes, mime),
+      x: o.x ?? 0.5,
+      y: o.y ?? 0.5,
+      scale: o.scale ?? 0.35,
+      ...(o.rotation !== undefined ? { rotation: o.rotation } : {}),
+      ...(o.opacity !== undefined ? { opacity: o.opacity } : {}),
+      ...(o.blend !== undefined ? { blend: o.blend } : {}),
+    });
+  }
+  const format = args.format ?? 'png';
+  return runAndReport(args.input, args.output, {
+    ops: [{ type: 'composite', layers }],
+    output: outputOf(format, args.quality),
+  });
 }
