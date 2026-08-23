@@ -39,9 +39,22 @@
   } = $props();
 
   /** Обраний шар перехоплює жест: інакше його не було б чим рухати. */
-  const layerDrag = $derived(
-    selectedLayer !== null && layers.some((l) => l.id === selectedLayer && !l.hidden),
+  const activeLayer = $derived(
+    selectedLayer === null
+      ? null
+      : layers.find((l) => l.id === selectedLayer && !l.hidden) ?? null,
   );
+  const layerDrag = $derived(activeLayer !== null);
+
+  /**
+   * Чи є що робити жестом узагалі.
+   *
+   * Не те саме, що movable: у режимах без люфту кадр не рухається, але
+   * обраний шар — рухається, і onPointerDown це вже враховує. Якби фокус
+   * і далі залежав лише від movable, шар у режимі «розтягнути» можна було
+   * б посунути мишею й ніяк — клавіатурою.
+   */
+  const interactive = $derived(movable || layerDrag);
 
   /** Кадрувати можна лише там, де є вільне місце. */
   const movable = $derived(mode === 'contain' || mode === 'cover');
@@ -72,13 +85,6 @@
   });
 
   /**
-   * Скільки пікселів прев'ю відповідає повному ходу частки.
-   *
-   * Це і є люфт: наскільки зображення більше або менше за кадр. Без нього
-   * тягнення на маленькому прев'ю рухало б кадр так само, як на великому,
-   * і жест не збігався б із тим, що видно.
-   */
-  /**
    * Прямокутник рамки на час жесту.
    *
    * Читається раз, на початку: getBoundingClientRect змушує браузер
@@ -94,6 +100,13 @@
     return frame === undefined ? null : frame.getBoundingClientRect();
   }
 
+  /**
+   * Скільки пікселів прев'ю відповідає повному ходу частки.
+   *
+   * Це і є люфт: наскільки зображення більше або менше за кадр. Без нього
+   * тягнення на маленькому прев'ю рухало б кадр так само, як на великому,
+   * і жест не збігався б із тим, що видно.
+   */
   function slack(): { x: number; y: number } {
     if (dims === null) return { x: 0, y: 0 };
     const rect = box();
@@ -138,9 +151,8 @@
   function anchor(x: number, y: number): void {
     startFx = fx; startFy = fy; startZ = z;
     startX = x; startY = y;
-    const picked = layers.find((l) => l.id === selectedLayer);
-    startLx = picked?.x ?? 0.5;
-    startLy = picked?.y ?? 0.5;
+    startLx = activeLayer?.x ?? 0.5;
+    startLy = activeLayer?.y ?? 0.5;
   }
 
   function onPointerMove(e: PointerEvent): void {
@@ -245,17 +257,20 @@
     // Обраний шар має пріоритет і з клавіатури — так само, як із мишею.
     // Інакше та сама стрілка робила б різне залежно від пристрою, а
     // посунути шар без миші було б неможливо взагалі.
-    if (layerDrag && selectedLayer !== null) {
-      const nudges: Record<string, readonly [number, number]> = {
-        ArrowLeft: [-step, 0], ArrowRight: [step, 0],
-        ArrowUp: [0, -step], ArrowDown: [0, step],
-      };
-      const nudge = nudges[e.key];
-      if (nudge === undefined) return;
-      const picked = layers.find((l) => l.id === selectedLayer);
-      if (picked === undefined) return;
+    // Стрілки забирає шар, решта клавіш падає далі — інакше вибір шару
+    // тихо вимикав би + і − , якими наближають кадр.
+    const nudges: Record<string, readonly [number, number]> = {
+      ArrowLeft: [-step, 0], ArrowRight: [step, 0],
+      ArrowUp: [0, -step], ArrowDown: [0, step],
+    };
+    const nudge = nudges[e.key];
+    if (activeLayer !== null && selectedLayer !== null && nudge !== undefined) {
       e.preventDefault();
-      onlayermove?.(selectedLayer, clamp01(picked.x + nudge[0]), clamp01(picked.y + nudge[1]));
+      onlayermove?.(
+        selectedLayer,
+        clamp01(activeLayer.x + nudge[0]),
+        clamp01(activeLayer.y + nudge[1]),
+      );
       return;
     }
 
@@ -295,12 +310,14 @@
     class:dragging
     bind:this={frame}
     style={`aspect-ratio: ${frameRatio}`}
-    role={movable ? 'slider' : undefined}
-    tabindex={movable ? 0 : undefined}
-    aria-label={movable ? t.crop.drag : undefined}
-    aria-valuemin={movable ? 0 : undefined}
-    aria-valuemax={movable ? 100 : undefined}
-    aria-valuenow={movable ? Math.round(fx * 100) : undefined}
+    role={interactive ? 'slider' : undefined}
+    tabindex={interactive ? 0 : undefined}
+    aria-label={interactive ? (layerDrag ? t.layers.section : t.crop.drag) : undefined}
+    aria-valuemin={interactive ? 0 : undefined}
+    aria-valuemax={interactive ? 100 : undefined}
+    aria-valuenow={interactive
+      ? Math.round((activeLayer !== null ? activeLayer.x : fx) * 100)
+      : undefined}
     data-testid="stage"
     onpointerdown={onPointerDown}
     onpointermove={onPointerMove}

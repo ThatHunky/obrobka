@@ -113,3 +113,23 @@ test('тягнення рухає обраний шар, а не кадр', asyn
   await expect(page.getByTestId('anchor-center')).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.error')).toHaveCount(0);
 });
+
+test('стрілки рухають шар, але наближення з клавіатури лишається', async ({ page }) => {
+  await ready(page);
+  await addLayer(page);
+  const ghost = page.getByTestId('layer-ghost-0');
+  await expect(ghost).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('stage').scrollIntoViewIfNeeded();
+  await page.getByTestId('stage').focus();
+
+  const before = (await ghost.boundingBox())!;
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await ghost.boundingBox())!.x, { timeout: 30_000 })
+    .toBeGreaterThan(before.x + 2);
+
+  // Обраний шар не має гасити клавіші кадру: + і далі наближає
+  await expect(page.getByTestId('zoom-value')).toHaveCount(0);
+  await page.keyboard.press('+');
+  await expect(page.getByTestId('zoom-value')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.error')).toHaveCount(0);
+});

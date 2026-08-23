@@ -62,14 +62,6 @@ export function parseHexColor(hex: string): RGBA {
 }
 
 /**
- * Прив'язка як звичайний об'єкт.
- *
- * Стан віджета — реактивний проксі Svelte 5, і об'єкт, покладений у нього,
- * теж стає проксі. Job їде у воркер через structured clone, який проксі не
- * переживає: перше ж тягнення падало з «could not be cloned». Іменована
- * прив'язка — рядок, її копіювати нема потреби.
- */
-/**
  * Копії піксельних буферів шарів.
  *
  * Ключ — сам RasterImage, і це не дрібниця: patchLayer перебудовує об'єкт
@@ -114,6 +106,14 @@ function plainLayer(l: UiLayer): Layer {
   };
 }
 
+/**
+ * Прив'язка як звичайний об'єкт.
+ *
+ * Стан віджета — реактивний проксі Svelte 5, і об'єкт, покладений у нього,
+ * теж стає проксі. Job їде у воркер через structured clone, який проксі не
+ * переживає: перше ж тягнення падало з «could not be cloned». Іменована
+ * прив'язка — рядок, її копіювати нема потреби.
+ */
 function plainPosition(p: Position): Position {
   if (typeof p !== 'object') return p;
   return 'fx' in p ? { fx: p.fx, fy: p.fy } : { x: p.x, y: p.y };

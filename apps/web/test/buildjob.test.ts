@@ -200,6 +200,34 @@ describe('шари', () => {
     expect(second.layers[0]!.image).toBe(first.layers[0]!.image);
   });
 
+  it('кеш ключується самим зображенням, а не шаром чи буфером', () => {
+    // У застосунку сюди приїжджає проксі Svelte, і кеш працює лише тому,
+    // що для того самого джерела Svelte віддає той самий проксі. Тут це
+    // відтворено запам'ятовувальною обгорткою: інша обгортка того самого
+    // буфера — інший ключ, а отже й інша копія.
+    const cache = new WeakMap<object, object>();
+    const wrap = <T extends object>(o: T): T => {
+      const hit = cache.get(o);
+      if (hit !== undefined) return hit as T;
+      const made = new Proxy(o, {});
+      cache.set(o, made);
+      return made as T;
+    };
+    const image = px(8, 8);
+    const shot = (opacity: number) =>
+      (buildJob({ ...base, layers: [wrap(uiLayer({ image: wrap(image), opacity }))] })
+        .ops.find((o) => o.type === 'composite') as { layers: readonly { image: object }[] })
+        .layers[0]!.image;
+    expect(shot(1)).toBe(shot(0.4));
+
+    // Інше зображення того самого розміру ділити копію не має
+    expect(shot(1)).not.toBe(
+      (buildJob({ ...base, layers: [uiLayer({ image: px(8, 8) })] })
+        .ops.find((o) => o.type === 'composite') as { layers: readonly { image: object }[] })
+        .layers[0]!.image,
+    );
+  });
+
   it('шари переживають structured clone', () => {
     // Той самий проксі Svelte, що ламав прив'язку: шар лежить у стані,
     // тож і він, і його піксельний масив приїжджають сюди проксями.

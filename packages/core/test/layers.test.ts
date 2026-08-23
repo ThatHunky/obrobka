@@ -138,6 +138,24 @@ describe('composite', () => {
     }
   });
 
+  it('повний оберт лягає так само чітко, як нульовий', () => {
+    // MCP приймає −360..360. 360° — це те саме, що 0°, тож і краю
+    // напівпрозорого там бути не має.
+    for (const rotation of [0, 360, -360]) {
+      const out = composite(solidImage(100, 100, RED), [
+        layer({ image: solidImage(50, 50, BLUE), scale: 0.51, rotation }),
+      ]);
+      let mixed = 0;
+      for (let x = 0; x < 100; x++) {
+        for (let y = 0; y < 100; y++) {
+          const p = pixelAt(out, x, y);
+          if (p.b > 0 && p.b < 255) mixed++;
+        }
+      }
+      expect({ rotation, mixed }).toEqual({ rotation, mixed: 0 });
+    }
+  });
+
   it('порядок масиву — це порядок накладання', () => {
     const out = composite(solidImage(100, 100, WHITE), [
       layer({ image: solidImage(20, 20, RED) }),

@@ -75,7 +75,10 @@ function drawLayer(dst: Uint8ClampedArray, dw: number, dh: number, layer: Layer)
 
   const cx = layer.x * dw;
   const cy = layer.y * dh;
-  const rad = ((layer.rotation ?? 0) * Math.PI) / 180;
+  // Повний оберт — те саме, що жодного, і має лягти так само чітко.
+  // MCP приймає −360..360, тож зводимо кут в один оберт перед звіркою.
+  const deg = (((layer.rotation ?? 0) % 360) + 360) % 360;
+  const rad = (deg * Math.PI) / 180;
   const cos = Math.cos(-rad);
   const sin = Math.sin(-rad);
 
@@ -89,7 +92,7 @@ function drawLayer(dst: Uint8ClampedArray, dw: number, dh: number, layer: Layer)
    * проти нуля при ширині 50. Повзунок розміру ходить відсотками, тож
    * під це підпадала приблизно половина його положень.
    */
-  const upright = Math.abs(rad) < 1e-6;
+  const upright = deg < 1e-4 || deg > 360 - 1e-4;
   const ox = Math.round(cx - renderW / 2);
   const oy = Math.round(cy - renderH / 2);
 
