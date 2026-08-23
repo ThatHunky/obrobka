@@ -10,6 +10,7 @@ export {
 } from './ops/mask.js';
 export { applyMask } from './ops/applyMask.js';
 export { outline } from './ops/outline.js';
+export { composite } from './ops/composite.js';
 export { smartCrop } from './ops/smartCrop.js';
 export { trim, type TrimOptions } from './ops/trim.js';
 export { upscaleTiled, type UpscaleProgress } from './ops/upscale.js';

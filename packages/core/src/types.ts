@@ -90,6 +90,36 @@ export interface OutlineOptions {
   readonly expand?: boolean;
 }
 
+export type BlendMode =
+  | 'normal' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten';
+
+/**
+ * Зображення, накладене поверх основи.
+ *
+ * Геометрія нормалізована відносно основи — тобто полотна після fit, бо
+ * саме там composite і виконується. Без цього «один водяний знак на
+ * двадцять файлів різного розміру» був би неможливий: у пікселях те саме
+ * число означало б на кожному файлі інше місце.
+ */
+export interface Layer {
+  readonly image: RasterImage;
+  /** Центр шару як частка ширини основи. */
+  readonly x: number;
+  /** Центр шару як частка висоти основи. */
+  readonly y: number;
+  /**
+   * Ширина шару як частка ширини основи. Висота береться з власного
+   * співвідношення шару, тож накладене ніколи не розтягується.
+   */
+  readonly scale: number;
+  /** Градуси за годинниковою стрілкою навколо центра. Типово 0. */
+  readonly rotation?: number;
+  /** 0..1. Типово 1. Домножує альфу шару після змішування. */
+  readonly opacity?: number;
+  /** Типово 'normal'. */
+  readonly blend?: BlendMode;
+}
+
 export interface SmartCropOptions {
   /** Ширина, поділена на висоту. */
   readonly aspectRatio: number;
@@ -134,6 +164,14 @@ export type Op =
       /** Збільшення нейромережею. Виконується тайлами. */
       readonly type: 'upscale';
       readonly factor: 2 | 4;
+    }
+  | {
+      /**
+       * Накладає зображення поверх. Порядок масиву — порядок накладання:
+       * перший шар лежить найнижче.
+       */
+      readonly type: 'composite';
+      readonly layers: readonly Layer[];
     }
   | {
       /** Обрізає порожні краї до прямокутника суб'єкта. */
