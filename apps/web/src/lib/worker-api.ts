@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 import type {
-  FitMode, Job, Layer, Op, OutputFormat, Position, RGBA, Tier,
+  FitMode, Job, Layer, Op, OutputFormat, Position, RasterImage, RGBA, Tier,
 } from '@obrobka/core';
 import type { Metadata } from '@obrobka/metadata';
 
@@ -70,6 +70,32 @@ export function parseHexColor(hex: string): RGBA {
  * прив'язка — рядок, її копіювати нема потреби.
  */
 /**
+ * Копії піксельних буферів шарів.
+ *
+ * Ключ — сам RasterImage, і це не дрібниця: patchLayer перебудовує об'єкт
+ * шару на кожен рух повзунка, але картинку лишає ту саму. Без кеша копія
+ * робилася б наново щоразу — 16 МБ і близько 5 мс на шар 2048×2048, і ще
+ * стільки ж, коли Comlink клонує його у воркер. Одне протягування
+ * повзунка прозорості коштувало сотні мегабайтів заради зміни однієї
+ * дробової величини.
+ *
+ * WeakMap, а не Map: щойно шар вилучено, копія йде за оригіналом сама.
+ */
+const plainImages = new WeakMap<object, RasterImage>();
+
+function plainImage(img: RasterImage): RasterImage {
+  const hit = plainImages.get(img);
+  if (hit !== undefined) return hit;
+  const copy: RasterImage = {
+    data: new Uint8ClampedArray(img.data),
+    width: img.width,
+    height: img.height,
+  };
+  plainImages.set(img, copy);
+  return copy;
+}
+
+/**
  * Шар як звичайні дані.
  *
  * Та сама причина, що й у plainPosition, але глибша: у стані проксі стає
@@ -78,11 +104,7 @@ export function parseHexColor(hex: string): RGBA {
  */
 function plainLayer(l: UiLayer): Layer {
   return {
-    image: {
-      data: new Uint8ClampedArray(l.image.data),
-      width: l.image.width,
-      height: l.image.height,
-    },
+    image: plainImage(l.image),
     x: l.x,
     y: l.y,
     scale: l.scale,

@@ -189,6 +189,17 @@ describe('шари', () => {
     expect(op.layers[0]).toMatchObject({ rotation: 30, opacity: 0.4, blend: 'multiply' });
   });
 
+  it('той самий буфер копіюється один раз, а не на кожен прогін', () => {
+    // patchLayer перебудовує шар на кожен рух повзунка, лишаючи ту саму
+    // картинку. Копія має братися з кеша, інакше 16 МБ їхали б наново.
+    const image = px(8, 8);
+    const first = buildJob({ ...base, layers: [uiLayer({ image })] })
+      .ops.find((o) => o.type === 'composite') as { layers: readonly { image: object }[] };
+    const second = buildJob({ ...base, layers: [uiLayer({ image, opacity: 0.4 })] })
+      .ops.find((o) => o.type === 'composite') as { layers: readonly { image: object }[] };
+    expect(second.layers[0]!.image).toBe(first.layers[0]!.image);
+  });
+
   it('шари переживають structured clone', () => {
     // Той самий проксі Svelte, що ламав прив'язку: шар лежить у стані,
     // тож і він, і його піксельний масив приїжджають сюди проксями.

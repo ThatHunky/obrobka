@@ -1,5 +1,7 @@
 import * as Comlink from 'comlink';
-import { fit, runJob, type Job, type Mask, type RasterImage, type Tier } from '@obrobka/core';
+import {
+  fit, orient, runJob, type Job, type Mask, type RasterImage, type Tier,
+} from '@obrobka/core';
 import { withDecoder } from '@obrobka/codecs';
 import { browserCodec } from '@obrobka/codecs/browser';
 import { decodeHeic } from '@obrobka/heic';
@@ -143,7 +145,20 @@ const api = {
   async decodeOverlay(
     bytes: ArrayBuffer, mime: string,
   ): Promise<{ data: ArrayBuffer; width: number; height: number }> {
-    const img = await codec.decode(new Uint8Array(bytes), mime);
+    const raw = new Uint8Array(bytes);
+    let img = await codec.decode(raw, mime);
+
+    // Ті самі граблі, що й з основою: JPEG пише поворот теґом, а не
+    // пікселями. Мініатюру в панелі браузер повертає сам, тож без цього
+    // кроку шар у списку стояв рівно, а в результаті лежав набік.
+    // HEIC — виняток: libheif застосовує поворот ще при декодуванні.
+    // Биті EXIF нічого не спиняють: це не привід не накласти картинку.
+    if (mime !== 'image/heic') {
+      try {
+        img = orient(img, await readOrientation(raw));
+      } catch { /* лишаємо як є */ }
+    }
+
     const capped = Math.max(img.width, img.height) > MAX_OVERLAY_SIDE
       ? fit(img, { width: MAX_OVERLAY_SIDE, height: MAX_OVERLAY_SIDE, mode: 'inside' })
       : img;

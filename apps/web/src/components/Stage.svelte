@@ -78,17 +78,33 @@
    * тягнення на маленькому прев'ю рухало б кадр так само, як на великому,
    * і жест не збігався б із тим, що видно.
    */
+  /**
+   * Прямокутник рамки на час жесту.
+   *
+   * Читається раз, на початку: getBoundingClientRect змушує браузер
+   * порахувати розкладку, а той самий обробник одразу пише нові
+   * координати в стиль зображення. Читати його на кожен pointermove
+   * означало б чергувати читання й запис у такт кадрам. Розмір рамки
+   * посеред жесту однаково не змінюється.
+   */
+  let frameBox: DOMRect | null = null;
+
+  function box(): DOMRect | null {
+    if (frameBox !== null) return frameBox;
+    return frame === undefined ? null : frame.getBoundingClientRect();
+  }
+
   function slack(): { x: number; y: number } {
-    if (dims === null || frame === undefined) return { x: 0, y: 0 };
-    const box = frame.getBoundingClientRect();
-    if (box.width === 0 || box.height === 0) return { x: 0, y: 0 };
+    if (dims === null) return { x: 0, y: 0 };
+    const rect = box();
+    if (rect === null || rect.width === 0 || rect.height === 0) return { x: 0, y: 0 };
     const base = mode === 'cover'
-      ? Math.max(box.width / dims.w, box.height / dims.h)
-      : Math.min(box.width / dims.w, box.height / dims.h);
+      ? Math.max(rect.width / dims.w, rect.height / dims.h)
+      : Math.min(rect.width / dims.w, rect.height / dims.h);
     const scale = base * z;
     return {
-      x: Math.abs(dims.w * scale - box.width),
-      y: Math.abs(dims.h * scale - box.height),
+      x: Math.abs(dims.w * scale - rect.width),
+      y: Math.abs(dims.h * scale - rect.height),
     };
   }
 
@@ -113,12 +129,18 @@
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     dragging = true;
+    if (frame !== undefined) frameBox = frame.getBoundingClientRect();
+    anchor(e.clientX, e.clientY);
+    if (pointers.size === 2) startSpread = spread();
+  }
+
+  /** Запам'ятовує, від чого рахувати зміщення далі. */
+  function anchor(x: number, y: number): void {
     startFx = fx; startFy = fy; startZ = z;
-    startX = e.clientX; startY = e.clientY;
+    startX = x; startY = y;
     const picked = layers.find((l) => l.id === selectedLayer);
     startLx = picked?.x ?? 0.5;
     startLy = picked?.y ?? 0.5;
-    if (pointers.size === 2) startSpread = spread();
   }
 
   function onPointerMove(e: PointerEvent): void {
@@ -133,11 +155,12 @@
     // Обраний шар має пріоритет: людина щойно вибрала його в списку,
     // тож тягнення по кадру означає «посунь оце», а не «переклади кадр».
     if (layerDrag && selectedLayer !== null) {
-      const box = frame.getBoundingClientRect();
+      const rect = box();
+      if (rect === null) return;
       onlayermove?.(
         selectedLayer,
-        clamp01(startLx + (e.clientX - startX) / box.width),
-        clamp01(startLy + (e.clientY - startY) / box.height),
+        clamp01(startLx + (e.clientX - startX) / rect.width),
+        clamp01(startLy + (e.clientY - startY) / rect.height),
       );
       return;
     }
@@ -151,8 +174,18 @@
 
   function onPointerUp(e: PointerEvent): void {
     pointers.delete(e.pointerId);
-    if (pointers.size > 0) return;
+    if (pointers.size > 0) {
+      // Пальців стало менше, а якорі лишились від початку жесту. Палець,
+      // що лишився, за час зведення проїхав через пів екрана — і перший
+      // же його рух посунув би кадр одразу на всю цю відстань. Тож
+      // рахуємо далі від того місця, де він зараз.
+      const [rest] = Array.from(pointers.values());
+      if (rest !== undefined) anchor(rest.x, rest.y);
+      if (pointers.size === 2) startSpread = spread();
+      return;
+    }
     dragging = false;
+    frameBox = null;
     // Жест про шар кадру не стосується: commit() тут перевів би прив'язку
     // у власну, хоча людина її не чіпала.
     if (!layerDrag) commit();
@@ -191,9 +224,42 @@
   const objectPosition = $derived(`${(fx * 100).toFixed(2)}% ${(fy * 100).toFixed(2)}%`);
   const objectFit = $derived(mode === 'cover' || mode === 'fill' ? mode : 'contain');
 
+  /**
+   * Пропорції рамки.
+   *
+   * У inside та outside вихід навмисно не дорівнює запитаному кадру: він
+   * має пропорції оригіналу, і саме в цьому суть обох режимів. Малювати
+   * там цільовий кадр означало б обіцяти форму, якої пайплайн не віддасть,
+   * — 200×100 у режимі «без полів» із ціллю 512×512 дає 512×256, а рамка
+   * показувала квадрат.
+   */
+  const frameRatio = $derived(
+    (mode === 'inside' || mode === 'outside') && dims !== null
+      ? `${dims.w} / ${dims.h}`
+      : `${targetW} / ${targetH}`,
+  );
+
   function onKeyDown(e: KeyboardEvent): void {
-    if (!movable) return;
     const step = e.shiftKey ? 0.1 : 0.02;
+
+    // Обраний шар має пріоритет і з клавіатури — так само, як із мишею.
+    // Інакше та сама стрілка робила б різне залежно від пристрою, а
+    // посунути шар без миші було б неможливо взагалі.
+    if (layerDrag && selectedLayer !== null) {
+      const nudges: Record<string, readonly [number, number]> = {
+        ArrowLeft: [-step, 0], ArrowRight: [step, 0],
+        ArrowUp: [0, -step], ArrowDown: [0, step],
+      };
+      const nudge = nudges[e.key];
+      if (nudge === undefined) return;
+      const picked = layers.find((l) => l.id === selectedLayer);
+      if (picked === undefined) return;
+      e.preventDefault();
+      onlayermove?.(selectedLayer, clamp01(picked.x + nudge[0]), clamp01(picked.y + nudge[1]));
+      return;
+    }
+
+    if (!movable) return;
     const moves: Record<string, () => void> = {
       ArrowLeft: () => { fx = clamp01(fx - step); },
       ArrowRight: () => { fx = clamp01(fx + step); },
@@ -228,7 +294,7 @@
     class:movable
     class:dragging
     bind:this={frame}
-    style={`aspect-ratio: ${targetW} / ${targetH}`}
+    style={`aspect-ratio: ${frameRatio}`}
     role={movable ? 'slider' : undefined}
     tabindex={movable ? 0 : undefined}
     aria-label={movable ? t.crop.drag : undefined}

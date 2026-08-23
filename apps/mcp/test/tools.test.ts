@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { nodeCodec } from '@obrobka/codecs/node';
+import { buildExifApp1, withExif } from '@obrobka/metadata';
 import { compositeImages, convertImage, resizeImage } from '../src/tools.js';
 
 let dir = '';
@@ -121,6 +122,52 @@ describe('compositeImages', () => {
     expect(img.data[i + 2]!).toBeGreaterThan(100);
     expect(img.data[i + 2]!).toBeLessThan(190);
   });
+
+  it('накладене повертається за теґом EXIF', async () => {
+    // 40×20, ліва половина синя. З Orientation 6 воно має стати 20×40,
+    // тобто після повороту синя половина опиниться згори.
+    const w = 40; const h = 20;
+    const data = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        data[i + 2] = x < w / 2 ? 255 : 0;
+        data[i] = x < w / 2 ? 0 : 255;
+        data[i + 3] = 255;
+      }
+    }
+    const plain = await nodeCodec.encode({ data, width: w, height: h }, { format: 'jpeg', quality: 95 });
+    const path = join(dir, 'over-rotated.jpg');
+    await writeFile(path, withExif(plain, buildExifApp1({ orientation: 6 })));
+
+    const out = join(dir, 'oriented.png');
+    await compositeImages({
+      input: srcPath, output: out, overlays: [{ path, x: 0.5, y: 0.5, scale: 0.5 }],
+    });
+    const img = await nodeCodec.decode(await readFile(out), 'image/png');
+    const at = (x: number, y: number): number[] => {
+      const i = (y * img.width + x) * 4;
+      return [img.data[i]!, img.data[i + 2]!];
+    };
+    // Шар 100 px завширшки → після повороту 50×100, центр основи 100,50.
+    // Верхня половина шару має бути синьою, нижня — червоною.
+    expect(at(100, 20)[1]).toBeGreaterThan(150);
+    expect(at(100, 78)[0]).toBeGreaterThan(150);
+  });
+
+  it('завелике накладене зводиться до межі', async () => {
+    const side = 3000;
+    const big = await solidPng('huge.png', side, 10, 0, 0, 255);
+    const out = join(dir, 'capped.png');
+    // Без межі це був би буфер на десятки мегабайтів; перевіряємо, що
+    // виклик проходить і шар лягає, а не те, скільки він важив усередині.
+    const res = await compositeImages({
+      input: srcPath, output: out, overlays: [{ path: big, x: 0.5, y: 0.5, scale: 0.5 }],
+    });
+    expect(res.width).toBe(200);
+    const img = await nodeCodec.decode(await readFile(out), 'image/png');
+    expect(img.data[(50 * img.width + 100) * 4 + 2]!).toBeGreaterThan(200);
+  }, 60_000);
 
   it('порожній список — помилка, а не тихий прохід', async () => {
     await expect(compositeImages({

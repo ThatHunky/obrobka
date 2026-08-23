@@ -79,6 +79,20 @@ function drawLayer(dst: Uint8ClampedArray, dw: number, dh: number, layer: Layer)
   const cos = Math.cos(-rad);
   const sin = Math.sin(-rad);
 
+  /**
+   * Без повороту шар кладеться просто на сітку пікселів.
+   *
+   * Загальний шлях відображає кожну точку через тригонометрію, і при
+   * непарній ширині halfW ставав дробовим: шар з'їжджав на пів пікселя,
+   * вибірка змішувала двох сусідів, і в непрозорого логотипа з'являлась
+   * напівпрозора облямівка. Виміряно на шарі 51×51: 204 змішані пікселі
+   * проти нуля при ширині 50. Повзунок розміру ходить відсотками, тож
+   * під це підпадала приблизно половина його положень.
+   */
+  const upright = Math.abs(rad) < 1e-6;
+  const ox = Math.round(cx - renderW / 2);
+  const oy = Math.round(cy - renderH / 2);
+
   // Габарит повернутого шару: інакше довелось би обходити все полотно.
   const halfW = renderW / 2;
   const halfH = renderH / 2;
@@ -96,11 +110,20 @@ function drawLayer(dst: Uint8ClampedArray, dw: number, dh: number, layer: Layer)
 
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
-      const ux = x + 0.5 - cx;
-      const uy = y + 0.5 - cy;
-      const sx = ux * cos - uy * sin + halfW;
-      const sy = ux * sin + uy * cos + halfH;
-      sample(src, renderW, renderH, sx - 0.5, sy - 0.5, px);
+      let sx: number;
+      let sy: number;
+      if (upright) {
+        // Цілі координати — і та сама вибірка дає точний відлік,
+        // бо вага другого сусіда виходить нульова.
+        sx = x - ox;
+        sy = y - oy;
+      } else {
+        const ux = x + 0.5 - cx;
+        const uy = y + 0.5 - cy;
+        sx = ux * cos - uy * sin + halfW - 0.5;
+        sy = ux * sin + uy * cos + halfH - 0.5;
+      }
+      sample(src, renderW, renderH, sx, sy, px);
 
       const sa = px[3]! * opacity;
       if (sa <= 0) continue;

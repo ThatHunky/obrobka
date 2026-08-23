@@ -84,6 +84,60 @@ describe('composite', () => {
     expectPixel(out, 50, 50, { r: 255, g: 0, b: 255, a: 255 }, 2);
   });
 
+  it('overlay бере темну гілку на темній основі', () => {
+    // b <= 0.5 → 2·b·s. Основа 64 (0,251), шар 153 (0,6): 2·0,251·0,6 = 0,301 → 77
+    const out = composite(solidImage(20, 20, { r: 64, g: 64, b: 64, a: 255 }), [
+      layer({ image: solidImage(10, 10, { r: 153, g: 153, b: 153, a: 255 }), blend: 'overlay' }),
+    ]);
+    expectPixel(out, 10, 10, { r: 77, g: 77, b: 77, a: 255 }, 2);
+  });
+
+  it('overlay бере світлу гілку на світлій основі', () => {
+    // b > 0.5 → 1 − 2·(1−b)·(1−s). Основа 191 (0,749), шар 153: 0,799 → 204
+    const out = composite(solidImage(20, 20, { r: 191, g: 191, b: 191, a: 255 }), [
+      layer({ image: solidImage(10, 10, { r: 153, g: 153, b: 153, a: 255 }), blend: 'overlay' }),
+    ]);
+    expectPixel(out, 10, 10, { r: 204, g: 204, b: 204, a: 255 }, 2);
+  });
+
+  it('darken лишає темніше з двох', () => {
+    const dim = solidImage(10, 10, { r: 153, g: 153, b: 153, a: 255 });
+    const onLight = composite(solidImage(20, 20, { r: 191, g: 191, b: 191, a: 255 }),
+      [layer({ image: dim, blend: 'darken' })]);
+    const onDark = composite(solidImage(20, 20, { r: 64, g: 64, b: 64, a: 255 }),
+      [layer({ image: dim, blend: 'darken' })]);
+    expectPixel(onLight, 10, 10, { r: 153, g: 153, b: 153, a: 255 }, 2);
+    expectPixel(onDark, 10, 10, { r: 64, g: 64, b: 64, a: 255 }, 2);
+  });
+
+  it('lighten лишає світліше з двох', () => {
+    const dim = solidImage(10, 10, { r: 153, g: 153, b: 153, a: 255 });
+    const onLight = composite(solidImage(20, 20, { r: 191, g: 191, b: 191, a: 255 }),
+      [layer({ image: dim, blend: 'lighten' })]);
+    const onDark = composite(solidImage(20, 20, { r: 64, g: 64, b: 64, a: 255 }),
+      [layer({ image: dim, blend: 'lighten' })]);
+    expectPixel(onLight, 10, 10, { r: 191, g: 191, b: 191, a: 255 }, 2);
+    expectPixel(onDark, 10, 10, { r: 153, g: 153, b: 153, a: 255 }, 2);
+  });
+
+  it('непрозорий шар без повороту не має напівпрозорого краю', () => {
+    // Непарна ширина: 0,51 × 100 = 51 px. Саме там дробовий центр давав
+    // облямівку — 204 змішані пікселі проти нуля при парній ширині.
+    for (const scale of [0.5, 0.51]) {
+      const out = composite(solidImage(100, 100, RED), [
+        layer({ image: solidImage(50, 50, BLUE), scale }),
+      ]);
+      let mixed = 0;
+      for (let x = 0; x < 100; x++) {
+        for (let y = 0; y < 100; y++) {
+          const p = pixelAt(out, x, y);
+          if (p.b > 0 && p.b < 255) mixed++;
+        }
+      }
+      expect({ scale, mixed }).toEqual({ scale, mixed: 0 });
+    }
+  });
+
   it('порядок масиву — це порядок накладання', () => {
     const out = composite(solidImage(100, 100, WHITE), [
       layer({ image: solidImage(20, 20, RED) }),

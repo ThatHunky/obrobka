@@ -1,7 +1,7 @@
 import { basename, extname, join } from 'node:path';
 import { glob, mkdir } from 'node:fs/promises';
 import {
-  runJob,
+  fit, orient, runJob,
   type BlendMode, type FitMode, type Job, type Layer, type Op,
   type OutputFormat, type Tier,
 } from '@obrobka/core';
@@ -343,6 +343,29 @@ export async function processBatch(args: BatchArgs): Promise<BatchResult> {
   return { outputs, errors, skipped: found.length - selected.length };
 }
 
+/**
+ * Межа роздільності накладеного зображення.
+ *
+ * Те саме число, що у браузері: повнорозмірний RGBA шар — це десятки
+ * мегабайтів, а малюється він на частку кадру. 6000×4000 коштували б
+ * 96 МБ на самий лише буфер, і стільки ж знову всередині resample.
+ */
+const MAX_OVERLAY_SIDE = 2048;
+
+/** Декодує накладене: поворот за EXIF, потім межа роздільності. */
+async function overlayImage(bytes: Uint8Array, mime: string) {
+  let img = await codec.decode(bytes, mime);
+  // HEIC — виняток: libheif застосовує поворот ще при декодуванні.
+  if (mime !== 'image/heic') {
+    try {
+      img = orient(img, await readOrientation(bytes));
+    } catch { /* биті EXIF не привід не накласти картинку */ }
+  }
+  return Math.max(img.width, img.height) > MAX_OVERLAY_SIDE
+    ? fit(img, { width: MAX_OVERLAY_SIDE, height: MAX_OVERLAY_SIDE, mode: 'inside' })
+    : img;
+}
+
 export interface CompositeOverlay {
   readonly path: string;
   /** Центр як частка ширини основи. Типово 0.5. */
@@ -379,7 +402,7 @@ export async function compositeImages(args: CompositeArgs): Promise<ToolResult> 
   for (const o of args.overlays) {
     const { bytes, mime } = await readImage(o.path);
     layers.push({
-      image: await codec.decode(bytes, mime),
+      image: await overlayImage(bytes, mime),
       x: o.x ?? 0.5,
       y: o.y ?? 0.5,
       scale: o.scale ?? 0.35,
