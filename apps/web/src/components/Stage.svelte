@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FitMode, Position } from '@obrobka/core';
+  import type { FitMode, Mask, Position } from '@obrobka/core';
   import type { UiLayer } from '../lib/worker-api.js';
   import type { Dict } from '../lib/i18n.js';
 
@@ -13,7 +13,9 @@
    */
   let {
     src, dims, targetW, targetH, mode, position, zoom, meta = '',
-    layers = [], selectedLayer = null, onlayermove, t, onchange,
+    layers = [], selectedLayer = null, onlayermove,
+    brush = { on: false, mode: 'erase', size: 40, clearToken: 0 }, onstroke,
+    t, onchange,
   }: {
     src: string;
     dims: { w: number; h: number } | null;
@@ -34,9 +36,97 @@
     layers?: readonly UiLayer[];
     selectedLayer?: number | null;
     onlayermove?: (id: number, x: number, y: number) => void;
+    /** Стан пензля. clearToken росте, коли треба стерти всі мазки. */
+    brush?: { on: boolean; mode: 'erase' | 'restore'; size: number; clearToken: number };
+    onstroke?: (m: { keep: Mask | null; erase: Mask | null }) => void;
     t: Dict;
     onchange: (p: { position: Position; zoom: number }) => void;
   } = $props();
+
+  /**
+   * Пензель малює по оригіналу, а не по кадру.
+   *
+   * Сцена зазвичай показує кадр, тобто вже обрізане. Малювати по ньому
+   * означало б не мати доступу до того, що поза кадром, і мати справу з
+   * масштабом, який змінюється від наближення. Мазки ж лежать у
+   * координатах оригіналу — тож у цьому режимі рамка показує оригінал
+   * цілком, а кадрування й наближення на час малювання відступають.
+   */
+  const brushOn = $derived(brush.on && dims !== null);
+
+  /**
+   * Роздільність полотна мазків.
+   *
+   * Обмежена 1024 по більшій стороні: фотографія 4000×3000 коштувала б
+   * 12 МБ на маску, а їх дві. Край мазка однаково м'який, тож зменшення
+   * на ньому не видно — на відміну від накладеного зображення, де межу
+   * взято вдвічі більшу саме заради різкості.
+   */
+  const MAX_STROKE_SIDE = 1024;
+  const strokeSize = $derived.by(() => {
+    if (dims === null) return { w: 1, h: 1 };
+    const k = Math.min(1, MAX_STROKE_SIDE / Math.max(dims.w, dims.h));
+    return { w: Math.max(1, Math.round(dims.w * k)), h: Math.max(1, Math.round(dims.h * k)) };
+  });
+
+  let eraseCanvas = $state<HTMLCanvasElement | null>(null);
+  let keepCanvas = $state<HTMLCanvasElement | null>(null);
+  let painting = false;
+  let lastPoint: { x: number; y: number } | null = null;
+
+  /** Чистимо мазки, коли панель просить, і коли змінюється розмір полотна. */
+  $effect(() => {
+    const token = brush.clearToken;
+    const size = strokeSize;
+    void token; void size;
+    for (const c of [eraseCanvas, keepCanvas]) {
+      if (c === null) continue;
+      c.getContext('2d')?.clearRect(0, 0, c.width, c.height);
+    }
+  });
+
+  /** Альфа полотна — це і є маска: колір там суто косметичний. */
+  function toMask(canvas: HTMLCanvasElement | null): Mask | null {
+    if (canvas === null) return null;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (ctx === null) return null;
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const out = new Uint8ClampedArray(canvas.width * canvas.height);
+    let any = false;
+    for (let p = 0, i = 3; p < out.length; p++, i += 4) {
+      const a = data[i]!;
+      out[p] = a;
+      if (a > 0) any = true;
+    }
+    return any ? { data: out, width: canvas.width, height: canvas.height } : null;
+  }
+
+  function paintAt(e: PointerEvent): void {
+    const rect = box();
+    const canvas = brush.mode === 'erase' ? eraseCanvas : keepCanvas;
+    if (rect === null || canvas === null) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) return;
+
+    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    // Товщина задана в пікселях прев'ю — переводимо в пікселі полотна,
+    // інакше на маленькому екрані мазок був би вдесятеро грубший.
+    ctx.lineWidth = Math.max(1, brush.size * (canvas.width / rect.width));
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // Малюємо непрозорим: прозорість накидає CSS. Інакше альфа
+    // накопичувалась би на перетинах мазка й маска виходила б плямиста.
+    // Колір вільний — маскою стає альфа, а не він; тут він лише щоб було
+    // видно, де стерто, а де повернуто.
+    ctx.strokeStyle = brush.mode === 'erase' ? '#ff5f56' : '#3ecf8e';
+    ctx.beginPath();
+    if (lastPoint === null) ctx.moveTo(x, y);
+    else ctx.moveTo(lastPoint.x, lastPoint.y);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    lastPoint = { x, y };
+  }
 
   /** Обраний шар перехоплює жест: інакше його не було б чим рухати. */
   const activeLayer = $derived(
@@ -138,6 +228,14 @@
   }
 
   function onPointerDown(e: PointerEvent): void {
+    if (brushOn) {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      if (frame !== undefined) frameBox = frame.getBoundingClientRect();
+      painting = true;
+      lastPoint = null;
+      paintAt(e);
+      return;
+    }
     if (!movable && !layerDrag) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -156,6 +254,10 @@
   }
 
   function onPointerMove(e: PointerEvent): void {
+    if (brushOn) {
+      if (painting) paintAt(e);
+      return;
+    }
     if (!dragging || !pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -185,6 +287,15 @@
   }
 
   function onPointerUp(e: PointerEvent): void {
+    if (brushOn) {
+      if (!painting) return;
+      painting = false;
+      lastPoint = null;
+      // Маски знімаємо на кінець мазка, не щокадру: та сама дисципліна,
+      // що й у тягненні кадру — у воркер летить завершений жест.
+      onstroke?.({ keep: toMask(keepCanvas), erase: toMask(eraseCanvas) });
+      return;
+    }
     pointers.delete(e.pointerId);
     if (pointers.size > 0) {
       // Пальців стало менше, а якорі лишились від початку жесту. Палець,
@@ -204,7 +315,7 @@
   }
 
   function onWheel(e: WheelEvent): void {
-    if (!movable) return;
+    if (brushOn || !movable) return;
     e.preventDefault();
     z = clampZoom(z * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
     schedule();
@@ -241,15 +352,14 @@
    * — 200×100 у режимі «без полів» із ціллю 512×512 дає 512×256, а рамка
    * показувала квадрат.
    */
+  const showsSource = $derived(
+    (brushOn || mode === 'inside' || mode === 'outside') && dims !== null,
+  );
   const frameAspect = $derived(
-    (mode === 'inside' || mode === 'outside') && dims !== null
-      ? dims.w / dims.h
-      : targetW / targetH,
+    showsSource && dims !== null ? dims.w / dims.h : targetW / targetH,
   );
   const frameRatio = $derived(
-    (mode === 'inside' || mode === 'outside') && dims !== null
-      ? `${dims.w} / ${dims.h}`
-      : `${targetW} / ${targetH}`,
+    showsSource && dims !== null ? `${dims.w} / ${dims.h}` : `${targetW} / ${targetH}`,
   );
 
   /**
@@ -270,6 +380,8 @@
    */
   const preview = $derived.by(() => {
     if (dims === null) return null;
+    // Малюємо по оригіналу — ні кадру, ні наближення тут немає
+    if (brushOn) return { sw: 1, sh: 1, left: 0, top: 0 };
     const a = frameAspect;
     const f = dims.w / dims.h;
     const sw = mode === 'fill' ? z
@@ -293,6 +405,7 @@
   );
 
   function onKeyDown(e: KeyboardEvent): void {
+    if (brushOn) return;
     const step = e.shiftKey ? 0.1 : 0.02;
 
     // Обраний шар має пріоритет і з клавіатури — так само, як із мишею.
@@ -339,7 +452,7 @@
     {#if z > 1}
       <span class="zoom" data-testid="zoom-value">{z.toFixed(1)}×</span>
     {/if}
-    {#if movable}
+    {#if movable && !brushOn}
       <button type="button" class="reset" data-testid="framing-reset"
               title={t.crop.reset} aria-label={t.crop.reset} onclick={reset}>⟲</button>
     {/if}
@@ -347,8 +460,9 @@
 
   <div
     class="frame checker"
-    class:movable
+    class:movable={movable && !brushOn}
     class:dragging
+    class:painting={brushOn}
     bind:this={frame}
     style={`aspect-ratio: ${frameRatio}`}
     role={interactive ? 'slider' : undefined}
@@ -371,6 +485,23 @@
       <img class="source" {src} alt={t.before} draggable="false" style={sourceStyle} />
     {/if}
 
+    {#if brushOn}
+      <canvas
+        bind:this={eraseCanvas}
+        class="strokes erase"
+        width={strokeSize.w}
+        height={strokeSize.h}
+        data-testid="brush-canvas-erase"
+      ></canvas>
+      <canvas
+        bind:this={keepCanvas}
+        class="strokes keep"
+        width={strokeSize.w}
+        height={strokeSize.h}
+        data-testid="brush-canvas-keep"
+      ></canvas>
+    {/if}
+
     {#each layers as l (l.id)}
       {#if !l.hidden}
         <img
@@ -389,7 +520,11 @@
   </div>
 
   {#if meta !== ''}<p class="meta">{meta}</p>{/if}
-  {#if movable}<p class="hint">{t.crop.dragHint}</p>{/if}
+  {#if brushOn}
+    <p class="hint">{t.brush.hint}</p>
+  {:else if movable}
+    <p class="hint">{t.crop.dragHint}</p>
+  {/if}
 </figure>
 
 <style>
@@ -432,6 +567,23 @@
     max-width: none;
     user-select: none; -webkit-user-drag: none;
   }
+  /*
+   * Мазки. Полотна лежать у своїй роздільності й розтягуються стилем на
+   * всю рамку — саме тому альфа полотна прямо дорівнює масці, а колір
+   * тут лише щоб людина бачила, де вже провела.
+   */
+  .strokes {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    pointer-events: none;
+    opacity: 0.5;
+    image-rendering: auto;
+  }
+  .frame.painting { cursor: crosshair; touch-action: none; }
+
   /*
    * Прев'ю шару. pointer-events: none навмисно — жест ловить кадр,
    * інакше півдороги тягнення губилося б на самому шарі.

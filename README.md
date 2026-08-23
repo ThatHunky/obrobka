@@ -19,6 +19,7 @@ Ukrainian-first, English second. MIT licensed.
 | **Outline** | coloured stroke around the subject, canvas grows to fit |
 | **Subject-aware crop** | frames the subject, not the centre |
 | **Upscale** | Swin2SR ×2 or ×4, tiled so memory stays flat |
+| **Brush** | paint to erase, or paint back what the model ate; no model, no download |
 | **Layers** | images composited on top — logo, sticker, watermark; move, scale, rotate, blend |
 | **Framing by hand** | drag the image to move the crop, wheel or pinch to zoom |
 | **Batch** | many files at once, out as a ZIP |

@@ -106,6 +106,11 @@ for (const view of [
     await page.getByTestId('outline-toggle').click();
     expect(await overlaps(page)).toEqual([]);
 
+    // Пензель приносить свій ряд кнопок і повзунок
+    await page.getByTestId('brush-toggle').click();
+    expect(await overlaps(page)).toEqual([]);
+    await page.getByTestId('brush-toggle').click();
+
     // Панель шарів приносить свої підказки й свій список кнопок
     await page.setInputFiles('[data-testid="layer-add"]', FIXTURE);
     await expect(page.locator('[data-testid^="layer-remove-"]'))

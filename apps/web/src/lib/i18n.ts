@@ -71,6 +71,15 @@ export interface Dict {
     zoom: string;
     reset: string;
   };
+  brush: {
+    section: string;
+    on: string;
+    erase: string;
+    restore: string;
+    size: string;
+    clear: string;
+    hint: string;
+  };
   layers: {
     section: string;
     add: string;
@@ -236,6 +245,15 @@ const uk: Dict = {
     dragHint: 'Тягніть зображення, щоб посунути кадр. Колесо або два пальці — наблизити.',
     zoom: 'Наближення',
     reset: 'Скинути кадр',
+  },
+  brush: {
+    section: 'Пензель',
+    on: 'Малювати по зображенню',
+    erase: 'Стерти',
+    restore: 'Повернути',
+    size: 'Розмір',
+    clear: 'Очистити мазки',
+    hint: 'Стирайте зайве або повертайте те, що модель з’їла. Мазки лягають на оригінал, тож кадр і розмір їм не заважають.',
   },
   layers: {
     section: 'Шари',
@@ -415,6 +433,15 @@ const en: Dict = {
     dragHint: 'Drag the image to move the frame. Wheel or two fingers to zoom.',
     zoom: 'Zoom',
     reset: 'Reset the frame',
+  },
+  brush: {
+    section: 'Brush',
+    on: 'Paint on the image',
+    erase: 'Erase',
+    restore: 'Restore',
+    size: 'Size',
+    clear: 'Clear strokes',
+    hint: 'Erase what you do not want, or paint back what the model ate. Strokes land on the original, so cropping and size do not disturb them.',
   },
   layers: {
     section: 'Layers',

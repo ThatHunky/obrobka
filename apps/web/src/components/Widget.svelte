@@ -2,6 +2,7 @@
   import { sniffMime } from '@obrobka/codecs';
   import type { FitMode, OutputFormat, Position, Tier } from '@obrobka/core';
   import type { Metadata } from '@obrobka/metadata';
+  import type { Mask } from '@obrobka/core';
   import {
     buildJob, getWorker, getWorkerSlot, needsModel, type WidgetState,
     type UiLayer,
@@ -16,6 +17,7 @@
   import BatchPanel from './BatchPanel.svelte';
   import Stage from './Stage.svelte';
   import LayerPanel from './LayerPanel.svelte';
+  import BrushPanel from './BrushPanel.svelte';
   import { KEEP_SIZE } from '../data/page.js';
   import { dict, type Locale } from '../lib/i18n.js';
   import * as Comlink from 'comlink';
@@ -610,6 +612,29 @@
     }
   }
 
+  /**
+   * Пензель.
+   *
+   * Маски живуть у state.paint, а полотна — у сцені. clearToken —
+   * найпростіший спосіб попросити сцену стерти намальоване: піднімаємо
+   * число, сцена бачить зміну й чистить полотна.
+   */
+  let brush = $state<{ on: boolean; mode: 'erase' | 'restore'; size: number; clearToken: number }>({
+    on: false, mode: 'erase', size: 40, clearToken: 0,
+  });
+  const painted = $derived(state.paint.keep !== null || state.paint.erase !== null);
+
+  function onStroke(m: { keep: Mask | null; erase: Mask | null }): void {
+    state.paint = m;
+    void process();
+  }
+
+  function clearStrokes(): void {
+    brush.clearToken += 1;
+    state.paint = { keep: null, erase: null };
+    void process();
+  }
+
   let selectedLayer = $state<number | null>(null);
   let nextLayerId = 0;
 
@@ -984,6 +1009,16 @@
     </div>
   {/if}
 
+  <BrushPanel
+    on={brush.on}
+    mode={brush.mode}
+    size={brush.size}
+    dirty={painted}
+    {t}
+    onchange={(p) => { brush = { ...brush, ...p }; }}
+    onclear={clearStrokes}
+  />
+
   <LayerPanel
     layers={state.layers}
     selected={selectedLayer}
@@ -1022,6 +1057,8 @@
         layers={state.layers}
         selectedLayer={selectedLayer}
         onlayermove={(id, x, y) => patchLayer(id, { x, y })}
+        {brush}
+        onstroke={onStroke}
         meta={`${sourceDims ? `${sourceDims.w}×${sourceDims.h}` : ''} · ${kb(sourceSize)}`}
         {t}
         onchange={(p) => {
