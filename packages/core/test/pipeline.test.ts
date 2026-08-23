@@ -34,6 +34,38 @@ describe('runJob', () => {
     expect(out).toEqual({ w: 512, h: 512, f: 'png' });
   });
 
+  it('шар лягає на полотно після fit', async () => {
+    const BLUE = { r: 0, g: 0, b: 255, a: 255 } as const;
+    let final: RasterImage | null = null;
+    // Наявний fakeCodec кодує в JSON із самими розмірами — пікселів через
+    // нього не побачити, тож тут потрібен кодек, який тримає готовий кадр.
+    const capturing: Codec = {
+      canDecode: (mime) => mime === 'image/fake',
+      canEncode: (format) => format === 'png',
+      decode: async () => source,
+      encode: async (img) => { final = img; return new Uint8Array(0); },
+    };
+    const job: Job = {
+      ops: [
+        { type: 'fit', width: 50, height: 50, mode: 'cover' },
+        {
+          type: 'composite',
+          layers: [{ image: solidImage(10, 10, BLUE), x: 0.5, y: 0.5, scale: 1 }],
+        },
+      ],
+      output: { format: 'png' },
+    };
+    await runJob(input, 'image/fake', job, { codec: capturing });
+
+    expect(final).not.toBeNull();
+    const out = final as unknown as RasterImage;
+    expect(out.width).toBe(50);
+    // Шар накриває полотно цілком (scale 1), тож центр має бути синім
+    expect(out.data[(25 * 50 + 25) * 4 + 2]).toBeGreaterThan(200);
+    // Кут теж — інакше composite виконався до fit і його обрізало
+    expect(out.data[2]).toBeGreaterThan(200);
+  });
+
   it('застосовує операції по порядку', async () => {
     const job: Job = {
       ops: [
