@@ -1018,6 +1018,9 @@
         mode={state.mode}
         position={state.position}
         zoom={state.zoom}
+        layers={state.layers}
+        selectedLayer={selectedLayer}
+        onlayermove={(id, x, y) => patchLayer(id, { x, y })}
         meta={`${sourceDims ? `${sourceDims.w}×${sourceDims.h}` : ''} · ${kb(sourceSize)}`}
         {t}
         onchange={(p) => {

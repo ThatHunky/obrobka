@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FitMode, Position } from '@obrobka/core';
+  import type { UiLayer } from '../lib/worker-api.js';
   import type { Dict } from '../lib/i18n.js';
 
   /**
@@ -11,7 +12,8 @@
    * пайплайн, а з увімкненою моделлю — ще й сесію ONNX.
    */
   let {
-    src, dims, targetW, targetH, mode, position, zoom, meta = '', t, onchange,
+    src, dims, targetW, targetH, mode, position, zoom, meta = '',
+    layers = [], selectedLayer = null, onlayermove, t, onchange,
   }: {
     src: string;
     dims: { w: number; h: number } | null;
@@ -28,9 +30,18 @@
      * четверту колонку в тришпальтовій сітці.
      */
     meta?: string;
+    /** Шари показуються поверх кадру, щоб їх було де тягнути. */
+    layers?: readonly UiLayer[];
+    selectedLayer?: number | null;
+    onlayermove?: (id: number, x: number, y: number) => void;
     t: Dict;
     onchange: (p: { position: Position; zoom: number }) => void;
   } = $props();
+
+  /** Обраний шар перехоплює жест: інакше його не було б чим рухати. */
+  const layerDrag = $derived(
+    selectedLayer !== null && layers.some((l) => l.id === selectedLayer && !l.hidden),
+  );
 
   /** Кадрувати можна лише там, де є вільне місце. */
   const movable = $derived(mode === 'contain' || mode === 'cover');
@@ -88,6 +99,8 @@
   let startSpread = 0;
   let startX = 0;
   let startY = 0;
+  let startLx = 0;
+  let startLy = 0;
 
   function spread(): number {
     const [a, b] = Array.from(pointers.values());
@@ -96,12 +109,15 @@
   }
 
   function onPointerDown(e: PointerEvent): void {
-    if (!movable) return;
+    if (!movable && !layerDrag) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     dragging = true;
     startFx = fx; startFy = fy; startZ = z;
     startX = e.clientX; startY = e.clientY;
+    const picked = layers.find((l) => l.id === selectedLayer);
+    startLx = picked?.x ?? 0.5;
+    startLy = picked?.y ?? 0.5;
     if (pointers.size === 2) startSpread = spread();
   }
 
@@ -112,6 +128,17 @@
     if (pointers.size >= 2) {
       const now = spread();
       if (startSpread > 0 && now > 0) z = clampZoom(startZ * (now / startSpread));
+      return;
+    }
+    // Обраний шар має пріоритет: людина щойно вибрала його в списку,
+    // тож тягнення по кадру означає «посунь оце», а не «переклади кадр».
+    if (layerDrag && selectedLayer !== null) {
+      const box = frame.getBoundingClientRect();
+      onlayermove?.(
+        selectedLayer,
+        clamp01(startLx + (e.clientX - startX) / box.width),
+        clamp01(startLy + (e.clientY - startY) / box.height),
+      );
       return;
     }
     // У contain зображення менше за полотно, тож рух пальця й рух кадру
@@ -126,7 +153,9 @@
     pointers.delete(e.pointerId);
     if (pointers.size > 0) return;
     dragging = false;
-    commit();
+    // Жест про шар кадру не стосується: commit() тут перевів би прив'язку
+    // у власну, хоча людина її не чіпала.
+    if (!layerDrag) commit();
   }
 
   function onWheel(e: WheelEvent): void {
@@ -222,6 +251,22 @@
         style={`object-fit: ${objectFit}; object-position: ${objectPosition}; transform: scale(${z});`}
       />
     {/if}
+
+    {#each layers as l (l.id)}
+      {#if !l.hidden}
+        <img
+          class="ghost"
+          class:on={l.id === selectedLayer}
+          src={l.thumb}
+          alt=""
+          draggable="false"
+          data-testid={`layer-ghost-${l.id}`}
+          style={`left: ${l.x * 100}%; top: ${l.y * 100}%; width: ${l.scale * 100}%;
+                  transform: translate(-50%, -50%) rotate(${l.rotation ?? 0}deg);
+                  opacity: ${l.opacity ?? 1};`}
+        />
+      {/if}
+    {/each}
   </div>
 
   {#if meta !== ''}<p class="meta">{meta}</p>{/if}
@@ -260,6 +305,19 @@
     width: 100%; height: 100%;
     user-select: none; -webkit-user-drag: none;
   }
+  /*
+   * Прев'ю шару. pointer-events: none навмисно — жест ловить кадр,
+   * інакше півдороги тягнення губилося б на самому шарі.
+   */
+  .ghost {
+    position: absolute;
+    height: auto;
+    pointer-events: none;
+    user-select: none;
+  }
+  /* Обраний видно, що обраний: інакше незрозуміло, що саме рухатиметься */
+  .ghost.on { outline: 1px dashed var(--accent); outline-offset: 2px; }
+
   .meta {
     font-family: var(--font-mono);
     font-size: 0.74rem;

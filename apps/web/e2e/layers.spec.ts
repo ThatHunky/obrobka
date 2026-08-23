@@ -29,7 +29,14 @@ async function centre(page: Page): Promise<string> {
         setTimeout(resolve, 3000);
       });
     }
-    await img.decode();
+    // Навіть після очікування src може змінитись між перевіркою й decode:
+    // прогін завершується асинхронно. Повертаємо мітку замість винятку,
+    // щоб expect.poll спробував ще раз, а не завалив тест на перегонах.
+    try {
+      await img.decode();
+    } catch {
+      return 'not-ready';
+    }
     const c = new OffscreenCanvas(img.naturalWidth, img.naturalHeight);
     const ctx = c.getContext('2d')!;
     ctx.drawImage(img, 0, 0);
@@ -84,4 +91,25 @@ test('вилучення шару прибирає його зі списку й
   await page.locator('[data-testid^="layer-remove-"]').first().click();
   await expect(page.locator('[data-testid^="layer-remove-"]')).toHaveCount(0);
   await expect.poll(() => centre(page), { timeout: 60_000 }).toBe(clean);
+});
+
+test('тягнення рухає обраний шар, а не кадр', async ({ page }) => {
+  await ready(page);
+  await addLayer(page);
+  const ghost = page.getByTestId('layer-ghost-0');
+  await expect(ghost).toBeVisible({ timeout: 30_000 });
+  await ghost.scrollIntoViewIfNeeded();
+
+  const before = (await ghost.boundingBox())!;
+  const stage = (await page.getByTestId('stage').boundingBox())!;
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(stage.x + stage.width - 16, stage.y + 16, { steps: 10 });
+  await page.mouse.up();
+
+  await expect.poll(async () => (await ghost.boundingBox())!.x, { timeout: 30_000 })
+    .toBeGreaterThan(before.x + 10);
+  // Прив'язку кадру тягнення шару чіпати не мало
+  await expect(page.getByTestId('anchor-center')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.error')).toHaveCount(0);
 });
