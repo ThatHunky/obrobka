@@ -245,6 +245,7 @@
   >
     {#if src !== ''}
       <img
+        class="source"
         {src}
         alt={t.before}
         draggable="false"
@@ -301,7 +302,12 @@
   /* Без цього палець гортає сторінку замість кадру. */
   .frame.movable { cursor: grab; touch-action: none; }
   .frame.dragging { cursor: grabbing; }
-  .frame img {
+  /*
+   * Тільки джерело, не шари. Селектор `.frame img` мав вищу вагу за
+   * `.ghost`, тож його height: 100% перебивав height: auto — прев'ю шару
+   * розтягувалось на всю висоту кадру й не збігалося з результатом.
+   */
+  .frame .source {
     width: 100%; height: 100%;
     user-select: none; -webkit-user-drag: none;
   }
