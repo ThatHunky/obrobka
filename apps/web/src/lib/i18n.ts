@@ -71,6 +71,21 @@ export interface Dict {
     zoom: string;
     reset: string;
   };
+  layers: {
+    section: string;
+    add: string;
+    empty: string;
+    up: string;
+    down: string;
+    remove: string;
+    hide: string;
+    show: string;
+    opacity: string;
+    size: string;
+    rotation: string;
+    blend: string;
+    modes: Record<string, string>;
+  };
   positions: Record<string, string>;
   upscale: {
     section: string;
@@ -221,6 +236,28 @@ const uk: Dict = {
     dragHint: 'Тягніть зображення, щоб посунути кадр. Колесо або два пальці — наблизити.',
     zoom: 'Наближення',
     reset: 'Скинути кадр',
+  },
+  layers: {
+    section: 'Шари',
+    add: 'Додати зображення',
+    empty: 'Покладіть картинку поверх — логотип, наклейку, водяний знак.',
+    up: 'Вище',
+    down: 'Нижче',
+    remove: 'Прибрати',
+    hide: 'Сховати',
+    show: 'Показати',
+    opacity: 'Прозорість',
+    size: 'Розмір',
+    rotation: 'Поворот',
+    blend: 'Накладання',
+    modes: {
+      normal: 'Звичайне',
+      multiply: 'Множення',
+      screen: 'Освітлення',
+      overlay: 'Перекриття',
+      darken: 'Темніше',
+      lighten: 'Світліше',
+    },
   },
   positions: {
     'top-left': 'вгорі ліворуч', top: 'вгорі', 'top-right': 'вгорі праворуч',
@@ -378,6 +415,28 @@ const en: Dict = {
     dragHint: 'Drag the image to move the frame. Wheel or two fingers to zoom.',
     zoom: 'Zoom',
     reset: 'Reset the frame',
+  },
+  layers: {
+    section: 'Layers',
+    add: 'Add image',
+    empty: 'Put an image on top — a logo, a sticker, a watermark.',
+    up: 'Up',
+    down: 'Down',
+    remove: 'Remove',
+    hide: 'Hide',
+    show: 'Show',
+    opacity: 'Opacity',
+    size: 'Size',
+    rotation: 'Rotation',
+    blend: 'Blend',
+    modes: {
+      normal: 'Normal',
+      multiply: 'Multiply',
+      screen: 'Screen',
+      overlay: 'Overlay',
+      darken: 'Darken',
+      lighten: 'Lighten',
+    },
   },
   positions: {
     'top-left': 'top left', top: 'top', 'top-right': 'top right',
