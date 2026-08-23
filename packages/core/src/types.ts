@@ -65,6 +65,17 @@ export interface FitOptions {
   readonly position?: Position;
   /** Чи дозволено збільшувати. Діє лише для contain та inside. Типово false. */
   readonly allowUpscale?: boolean;
+  /**
+   * Множник масштабу, не менше за 1. Типово 1.
+   *
+   * Застосовується після обмеження allowUpscale: той прапорець відповідає
+   * на питання «чи можна збільшувати те, що менше за кадр», а zoom —
+   * явний жест людини, яка вже дивиться на результат.
+   *
+   * Має сенс лише для contain і cover: у fill, inside та outside вільного
+   * місця немає, і рухати нічого.
+   */
+  readonly zoom?: number;
 }
 
 export type Tier = 'fast' | 'portrait' | 'quality';

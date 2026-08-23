@@ -119,3 +119,51 @@ describe('прив’язка часткою люфту', () => {
     expect(Array.from(clamped.data)).toEqual(Array.from(edge.data));
   });
 });
+
+describe('наближення', () => {
+  it('cover із zoom 2 лишає вдвічі меншу частину кадру', () => {
+    // Смуга 8 px посередині 200×200: при zoom 2 вона має стати 16 px.
+    const img = solidImage(200, 200, RED);
+    for (let y = 96; y < 104; y++) {
+      for (let x = 0; x < 200; x++) {
+        const i = (y * 200 + x) * 4;
+        img.data[i] = 0; img.data[i + 2] = 255;
+      }
+    }
+    const plain = fit(img, { width: 200, height: 200, mode: 'cover' });
+    const zoomed = fit(img, { width: 200, height: 200, mode: 'cover', zoom: 2 });
+    const blueRows = (r: typeof plain): number => {
+      let n = 0;
+      for (let y = 0; y < r.height; y++) if (pixelAt(r, 100, y).b > 128) n++;
+      return n;
+    };
+    expect(blueRows(plain)).toBe(8);
+    expect(blueRows(zoomed)).toBe(16);
+  });
+
+  it('діє попри вимкнений allowUpscale', () => {
+    // 100×50 у кадр 100×100: масштаб 1, зверху й знизу поля. allowUpscale
+    // збільшувати не дозволяє, але явний жест людини має право — і після
+    // нього кути займає зображення, а не поля.
+    const opts = { width: 100, height: 100, mode: 'contain' as const, allowUpscale: false };
+    expect(pixelAt(fit(solidImage(100, 50, RED), opts), 0, 0)).toEqual(CLEAR);
+    expect(pixelAt(fit(solidImage(100, 50, RED), { ...opts, zoom: 2 }), 0, 0)).toEqual(RED);
+  });
+
+  it('менше за одиницю затискається до одиниці', () => {
+    const one = fit(solidImage(200, 100, RED), { width: 100, height: 100, mode: 'cover' });
+    const small = fit(solidImage(200, 100, RED), {
+      width: 100, height: 100, mode: 'cover', zoom: 0.25,
+    });
+    expect(Array.from(small.data)).toEqual(Array.from(one.data));
+  });
+
+  it('ігнорується там, де люфту немає', () => {
+    for (const mode of ['fill', 'inside', 'outside'] as const) {
+      const plain = fit(solidImage(200, 100, RED), { width: 100, height: 100, mode });
+      const zoomed = fit(solidImage(200, 100, RED), { width: 100, height: 100, mode, zoom: 3 });
+      expect({ mode, w: zoomed.width, h: zoomed.height })
+        .toEqual({ mode, w: plain.width, h: plain.height });
+    }
+  });
+});

@@ -80,6 +80,14 @@ export function fit(img: RasterImage, opts: FitOptions): RasterImage {
   let scale = fitsInside ? Math.min(byWidth, byHeight) : Math.max(byWidth, byHeight);
   if (fitsInside && scale > 1 && opts.allowUpscale !== true) scale = 1;
 
+  // Наближення — після allowUpscale: див. коментар до поля zoom.
+  // У inside та outside вихід дорівнює масштабованому зображенню, тож
+  // наближення там означало б просто інший розмір файлу, а не інший кадр.
+  if (mode === 'contain' || mode === 'cover') {
+    const zoom = opts.zoom ?? 1;
+    if (zoom > 1) scale *= zoom;
+  }
+
   const rw = Math.max(1, Math.round(img.width * scale));
   const rh = Math.max(1, Math.round(img.height * scale));
   const scaled = resample(img, rw, rh);
