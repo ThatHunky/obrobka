@@ -1102,6 +1102,7 @@
     position: relative;
     transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
   }
+
   .widget.dragging {
     border-color: var(--accent);
     box-shadow: 0 0 0 4px var(--accent-glow), var(--shadow-lg);
@@ -1222,7 +1223,14 @@
     grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
     gap: 0.8rem;
   }
-  .field { display: grid; gap: 0.35rem; }
+  /*
+   * min-width: 0 тут обов'язковий. Елемент сітки за замовчуванням не
+   * вужчий за свій min-content, а в <select> це найдовший пункт —
+   * «PNG · без втрат». У повну ширину воно не муляло, а в півколонки
+   * поле вилазило за картку й підпис із ним.
+   */
+  .field { display: grid; gap: 0.35rem; min-width: 0; }
+  .field select, .field input { min-width: 0; max-width: 100%; }
   .field > span {
     font-size: 0.78rem;
     font-weight: 600;
@@ -1394,4 +1402,46 @@
   .stage.busy .pane:last-child .canvas { opacity: 0.55; transition: opacity var(--dur) var(--ease-out); }
 
   .download { justify-self: start; }
+  /*
+   * На широкому екрані контроли йдуть у дві колонки.
+   *
+   * Кожен блок усередині вже тече горизонтально — і чипи, і поля розміру,
+   * і перемикачі. Але сам віджет лишався однією колонкою, тож кожен блок
+   * займав увесь рядок і використовував від нього третину. У дві колонки
+   * та сама панель стає майже вдвічі коротшою, і менше доводиться гортати
+   * між налаштуванням і результатом.
+   *
+   * На всю ширину лишається те, що широке по суті: зона прийому файлу,
+   * обрізка (у неї своя двоколонкова сітка), список шарів, сцена
+   * «було → стало», помилка й панель EXIF.
+   */
+  @media (min-width: 60rem) {
+    .widget {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.15rem 1.6rem;
+      align-items: start;
+    }
+    .drop,
+    .crop,
+    .stage,
+    .error,
+    .download,
+    .rerun { grid-column: 1 / -1; }
+    /* Корені дочірніх компонентів власного хеша цього файлу не мають */
+    .widget > :global(.exif),
+    .widget > :global(.batch) { grid-column: 1 / -1; }
+
+    /*
+     * Півколонки — це близько 456 px, і мінімуми, розраховані на цілий
+     * рядок, у неї вже не влазять: три поля по 9rem давали 457 px і
+     * підрізали «Формат», а п'ять режимів по 88 px ламали рядок на 4+1.
+     */
+    /*
+     * Дві колонки, не auto-fit: у півколонки три поля в ряд лишають
+     * «Формат» близько 145 px, і назва кодека обрізається посеред слова.
+     * Ширина з висотою стають у перший рядок, формат із якістю — у другий,
+     * і кожному дістається вдвічі більше.
+     */
+    .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
 </style>

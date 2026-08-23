@@ -97,7 +97,13 @@
 
   .row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+    /*
+     * 78, а не 88: у двоколонковій розкладці віджета на цю сітку
+     * лишається близько 456 px, і при 88 п'ять режимів ламались на 4+1 —
+     * «Покрити» звисало саме в другий рядок. Іконка тут 44 px, тож
+     * вужча клітинка нічого не тисне.
+     */
+    grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
     gap: 0.5rem;
   }
 
