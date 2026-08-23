@@ -19,6 +19,8 @@ Ukrainian-first, English second. MIT licensed.
 | **Outline** | coloured stroke around the subject, canvas grows to fit |
 | **Subject-aware crop** | frames the subject, not the centre |
 | **Upscale** | Swin2SR ×2 or ×4, tiled so memory stays flat |
+| **Layers** | images composited on top — logo, sticker, watermark; move, scale, rotate, blend |
+| **Framing by hand** | drag the image to move the crop, wheel or pinch to zoom |
 | **Batch** | many files at once, out as a ZIP |
 | **Metadata** | see what the file records; the result carries none of it |
 | **Offline** | a service worker stores the shell; codecs are cached on first use |
@@ -36,10 +38,10 @@ I/O behind ports. One `runJob()` serves both a browser tab and an AI agent.
 npx obrobka-mcp
 ```
 
-Gives an agent eight tools — `convert_image`, `resize_image`,
-`remove_background`, `smart_crop`, `upscale_image`, `read_metadata`,
-`strip_metadata` and `process_batch` — operating on file paths rather than
-base64 blobs.
+Gives an agent nine tools — `convert_image`, `resize_image`,
+`remove_background`, `smart_crop`, `upscale_image`, `composite_images`,
+`read_metadata`, `strip_metadata` and `process_batch` — operating on file paths
+rather than base64 blobs.
 
 **Model choice is backed by measurements, not model cards.** Every candidate
 was downloaded and profiled before being picked — see
@@ -98,7 +100,7 @@ screenshots, PNG is safer" rather than "just use WebP".
 
 ```
 packages/core             pure ops over RGBA buffers — no DOM, no Node
-  ops/                    resample · crop · fit · mask · outline · smartCrop
+  ops/                    resample · crop · fit · mask · outline · smartCrop · composite
   ports/                  Codec · Segmenter · Upscaler · Metadata
 packages/codecs           jSquash, split into browser and Node adapters
 packages/models           model registry and three preprocessing recipes
