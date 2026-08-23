@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
+import { join } from 'node:path';
+
+const FIXTURE = join(import.meta.dirname, 'fixture.png');
 
 /**
  * Перевірка розкладки: жоден рядок тексту не має лежати поверх кнопки.
@@ -101,6 +104,12 @@ for (const view of [
     expect(await overlaps(page)).toEqual([]);
 
     await page.getByTestId('outline-toggle').click();
+    expect(await overlaps(page)).toEqual([]);
+
+    // Панель шарів приносить свої підказки й свій список кнопок
+    await page.setInputFiles('[data-testid="layer-add"]', FIXTURE);
+    await expect(page.locator('[data-testid^="layer-remove-"]'))
+      .toHaveCount(1, { timeout: 30_000 });
     expect(await overlaps(page)).toEqual([]);
   });
 }

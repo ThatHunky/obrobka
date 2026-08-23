@@ -9,7 +9,7 @@ test('знімок налаштувань обрізки', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
   await expect(page.locator('input[type=file][data-ready="true"]')).toBeAttached({ timeout: 60_000 });
-  await page.setInputFiles('input[type=file]', SPHERE);
+  await page.setInputFiles('[data-testid="pick"]', SPHERE);
   await expect(page.getByTestId('result')).toBeVisible({ timeout: 60_000 });
 
   await page.getByTestId('ratio-16:9').click();

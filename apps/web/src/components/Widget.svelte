@@ -4,6 +4,7 @@
   import type { Metadata } from '@obrobka/metadata';
   import {
     buildJob, getWorker, getWorkerSlot, needsModel, type WidgetState,
+    type UiLayer,
   } from '../lib/worker-api.js';
   import {
     makeZip, poolSize, runBatch, uniqueName, type BatchItem,
@@ -14,6 +15,7 @@
   import ExifPanel from './ExifPanel.svelte';
   import BatchPanel from './BatchPanel.svelte';
   import Stage from './Stage.svelte';
+  import LayerPanel from './LayerPanel.svelte';
   import { KEEP_SIZE } from '../data/page.js';
   import { dict, type Locale } from '../lib/i18n.js';
   import * as Comlink from 'comlink';
@@ -549,9 +551,19 @@
     }).catch(() => { /* лічильник не критичний */ });
   }
 
+  /**
+   * Лічильник прогонів одиночної обробки.
+   *
+   * Повзунки шару шлють input на кожен рух, тож прогонів у польоті буває
+   * кілька. Без мітки застарілий, завершившись пізніше, перезаписував би
+   * результат свіжого — на екрані лишалося б не те, що показують контроли.
+   */
+  let processToken = 0;
+
   async function process(): Promise<void> {
     if (isBatch) { markStale(); return; }
     if (sourceBytes === null) return;
+    const token = ++processToken;
     busy = true;
     error = '';
     const started = performance.now();
@@ -562,25 +574,110 @@
         copy.buffer, sourceMime, job,
         Comlink.proxy((p: { done: number; total: number }) => { tileProgress = p; }),
       );
-      if (resultUrl !== '') URL.revokeObjectURL(resultUrl);
+      if (token !== processToken) return;
+
       const blob = new Blob([out], { type: `image/${state.format}` });
-      resultUrl = URL.createObjectURL(blob);
-      resultSize = blob.size;
-      resultDims = await new Promise((resolve) => {
+      const fresh = URL.createObjectURL(blob);
+      const dims = await new Promise<{ w: number; h: number } | null>((resolve) => {
         const probe = new Image();
         probe.onload = () => resolve({ w: probe.naturalWidth, h: probe.naturalHeight });
         probe.onerror = () => resolve(null);
-        probe.src = resultUrl;
+        probe.src = fresh;
       });
+      if (token !== processToken) { URL.revokeObjectURL(fresh); return; }
+
+      // Старе посилання відкликаємо аж тепер. Раніше це стояло перед
+      // створенням нового — і поки картинка ще вантажилась, посилання
+      // під нею вже було мертве: браузер віддавав EncodingError замість
+      // зображення. На повільних прогонах цього не видно, а на повзунку
+      // прозорості, який шле подію на кожен піксель руху, — щоразу.
+      const stale = resultUrl;
+      resultUrl = fresh;
+      resultSize = blob.size;
+      resultDims = dims;
+      if (stale !== '') URL.revokeObjectURL(stale);
+
       elapsed = Math.round(performance.now() - started);
       reportRun(job.ops.map((o) => o.type));
     } catch (e) {
-      error = e instanceof Error ? e.message : t.errProcess;
+      if (token === processToken) error = e instanceof Error ? e.message : t.errProcess;
     } finally {
-      busy = false;
-      tileProgress = null;
+      if (token === processToken) {
+        busy = false;
+        tileProgress = null;
+      }
     }
   }
+
+  let selectedLayer = $state<number | null>(null);
+  let nextLayerId = 0;
+
+  /**
+   * Приймає накладені зображення.
+   *
+   * Декодування йде у воркер: там уже є кодек із HEIC, а головний потік
+   * не має ставати на 4000×3000 PNG. Мініатюра — окремий objectURL:
+   * у списку показувати сирий RGBA нічим.
+   */
+  async function addLayers(files: readonly File[]): Promise<void> {
+    for (const file of files) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const mime = sniffMime(bytes);
+      if (mime === null) { error = t.errUnknownFormat; continue; }
+      try {
+        const copy = bytes.slice();
+        const decoded = await getWorker().decodeOverlay(copy.buffer, mime);
+        const id = nextLayerId++;
+        state.layers = [...state.layers, {
+          id,
+          name: file.name,
+          hidden: false,
+          thumb: URL.createObjectURL(new Blob([bytes.slice()], { type: mime })),
+          image: {
+            data: new Uint8ClampedArray(decoded.data),
+            width: decoded.width,
+            height: decoded.height,
+          },
+          x: 0.5, y: 0.5, scale: 0.35,
+        }];
+        selectedLayer = id;
+      } catch (e) {
+        error = e instanceof Error ? e.message : t.errProcess;
+      }
+    }
+    await process();
+  }
+
+  function patchLayer(id: number, patch: Partial<UiLayer>): void {
+    state.layers = state.layers.map((l) => (l.id === id ? { ...l, ...patch } : l));
+    void process();
+  }
+
+  function removeLayer(id: number): void {
+    const gone = state.layers.find((l) => l.id === id);
+    if (gone !== undefined && gone.thumb !== '') URL.revokeObjectURL(gone.thumb);
+    state.layers = state.layers.filter((l) => l.id !== id);
+    if (selectedLayer === id) selectedLayer = null;
+    void process();
+  }
+
+  /** Порядок масиву — порядок накладання, тож «вище» це до кінця. */
+  function moveLayer(id: number, delta: -1 | 1): void {
+    const from = state.layers.findIndex((l) => l.id === id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= state.layers.length) return;
+    const next = [...state.layers];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved!);
+    state.layers = next;
+    void process();
+  }
+
+  // Мініатюри — objectURL: без відкликання вкладка тримала б їх до
+  // перезавантаження сторінки.
+  $effect(() => () => {
+    for (const l of state.layers) if (l.thumb !== '') URL.revokeObjectURL(l.thumb);
+  });
 
   function applyPreset(p: Preset): void {
     state = { ...state, width: p.width, height: p.height, mode: p.mode };
@@ -616,6 +713,7 @@
         multiple
         accept="image/png,image/jpeg,image/webp,image/avif,image/heic,image/heif,.heic,.heif"
         disabled={!ready}
+        data-testid="pick"
         data-ready={ready}
         onchange={(e) => {
           const files = Array.from(e.currentTarget.files ?? []);
@@ -884,6 +982,17 @@
       {/if}
     </div>
   {/if}
+
+  <LayerPanel
+    layers={state.layers}
+    selected={selectedLayer}
+    {t}
+    onadd={(files) => void addLayers(files)}
+    onpatch={patchLayer}
+    onremove={removeLayer}
+    onmove={moveLayer}
+    onselect={(id) => { selectedLayer = id; }}
+  />
 
   {#if error !== ''}
     <p class="error" role="alert">{error}</p>

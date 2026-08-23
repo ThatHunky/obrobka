@@ -61,7 +61,7 @@ test('сторінка відкривається без мережі', async ({
 
     await page.reload();
     await expect(page.locator('h1')).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('input[type=file]')).toBeAttached();
+    await expect(page.locator('[data-testid="pick"]')).toBeAttached();
   } finally {
     await context.setOffline(false);
   }

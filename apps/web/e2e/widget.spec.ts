@@ -13,7 +13,7 @@ async function openWithFile(page: Page): Promise<void> {
   await expect(page.locator('input[type=file][data-ready="true"]')).toBeAttached({
     timeout: 60_000,
   });
-  await page.setInputFiles('input[type=file]', FIXTURE);
+  await page.setInputFiles('[data-testid="pick"]', FIXTURE);
 }
 
 test('сторінка ізольована між походженнями', async ({ page }) => {

@@ -6,7 +6,7 @@ const SPHERE = join(import.meta.dirname, 'sphere.png');
 async function ready(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.locator('input[type=file][data-ready="true"]')).toBeAttached({ timeout: 60_000 });
-  await page.setInputFiles('input[type=file]', SPHERE);
+  await page.setInputFiles('[data-testid="pick"]', SPHERE);
   await expect(page.getByTestId('result')).toBeVisible({ timeout: 60_000 });
   await expectNoError(page);
 }

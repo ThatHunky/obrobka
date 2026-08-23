@@ -5,7 +5,7 @@ async function open(page: Page, file: string): Promise<void> {
   await page.goto('/');
   await expect(page.locator('input[type=file][data-ready="true"]'))
     .toBeAttached({ timeout: 60_000 });
-  await page.setInputFiles('input[type=file]', file);
+  await page.setInputFiles('[data-testid="pick"]', file);
   await expect(page.getByTestId('result')).toBeVisible({ timeout: 60_000 });
 }
 

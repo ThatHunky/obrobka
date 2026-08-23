@@ -6,7 +6,7 @@ async function openMany(page: Page, files: readonly string[]): Promise<void> {
   await page.goto('/');
   await expect(page.locator('input[type=file][data-ready="true"]'))
     .toBeAttached({ timeout: 60_000 });
-  await page.setInputFiles('input[type=file]', [...files]);
+  await page.setInputFiles('[data-testid="pick"]', [...files]);
   await expect(page.getByTestId('batch-panel')).toBeVisible({ timeout: 60_000 });
 }
 
