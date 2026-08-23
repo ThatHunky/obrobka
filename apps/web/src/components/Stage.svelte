@@ -11,7 +11,7 @@
    * пайплайн, а з увімкненою моделлю — ще й сесію ONNX.
    */
   let {
-    src, dims, targetW, targetH, mode, position, zoom, t, onchange,
+    src, dims, targetW, targetH, mode, position, zoom, meta = '', t, onchange,
   }: {
     src: string;
     dims: { w: number; h: number } | null;
@@ -20,6 +20,14 @@
     mode: FitMode;
     position: Position;
     zoom: number;
+    /**
+     * Підпис під кадром — розмір і вага оригіналу.
+     *
+     * Приходить готовим рядком, а не парою чисел: сцена — це один елемент
+     * сітки «було → стало», і власний `<p>` поруч із нею зробив би
+     * четверту колонку в тришпальтовій сітці.
+     */
+    meta?: string;
     t: Dict;
     onchange: (p: { position: Position; zoom: number }) => void;
   } = $props();
@@ -216,6 +224,7 @@
     {/if}
   </div>
 
+  {#if meta !== ''}<p class="meta">{meta}</p>{/if}
   {#if movable}<p class="hint">{t.crop.dragHint}</p>{/if}
 </figure>
 
@@ -250,6 +259,11 @@
   .frame img {
     width: 100%; height: 100%;
     user-select: none; -webkit-user-drag: none;
+  }
+  .meta {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--fg-muted);
   }
   .hint { font-size: 0.78rem; color: var(--fg-faint); max-width: 40ch; }
 </style>

@@ -44,6 +44,19 @@ export function parseHexColor(hex: string): RGBA {
 }
 
 /**
+ * Прив'язка як звичайний об'єкт.
+ *
+ * Стан віджета — реактивний проксі Svelte 5, і об'єкт, покладений у нього,
+ * теж стає проксі. Job їде у воркер через structured clone, який проксі не
+ * переживає: перше ж тягнення падало з «could not be cloned». Іменована
+ * прив'язка — рядок, її копіювати нема потреби.
+ */
+function plainPosition(p: Position): Position {
+  if (typeof p !== 'object') return p;
+  return 'fx' in p ? { fx: p.fx, fy: p.fy } : { x: p.x, y: p.y };
+}
+
+/**
  * Перетворює стан інтерфейсу на серіалізований Job.
  *
  * Порядок навмисний: фон знімається з оригіналу, а вписування в кадр
@@ -98,7 +111,7 @@ export function buildJob(s: WidgetState): Job {
     mode: s.mode,
     pad: s.padTransparent ? 'transparent' : parseHexColor(s.padColor),
     allowUpscale: s.allowUpscale,
-    position: s.position,
+    position: plainPosition(s.position),
     ...(s.zoom > 1 ? { zoom: s.zoom } : {}),
   });
 

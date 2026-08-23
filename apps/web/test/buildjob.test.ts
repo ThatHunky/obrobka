@@ -124,3 +124,25 @@ describe('кадрування тягненням', () => {
       .toEqual({ fx: 0.25, fy: 0.75 });
   });
 });
+
+/**
+ * Стан віджета — реактивний проксі Svelte 5, і об'єкт, покладений у нього,
+ * теж стає проксі. Job їде у воркер через structured clone, а проксі його
+ * не переживає: перше ж тягнення падало з «could not be cloned».
+ */
+describe('Job переживає structured clone', () => {
+  it("прив'язка їде звичайним об'єктом, а не проксі", () => {
+    const proxied = new Proxy({ fx: 0.25, fy: 0.75 }, {});
+    const job = buildJob({ ...base, position: proxied });
+    expect(() => structuredClone(job)).not.toThrow();
+    expect(structuredClone(job).ops.at(-1)).toMatchObject({
+      type: 'fit', position: { fx: 0.25, fy: 0.75 },
+    });
+  });
+
+  it('іменована прив’язка лишається рядком', () => {
+    const job = buildJob({ ...base, position: 'top-left' });
+    expect(() => structuredClone(job)).not.toThrow();
+    expect((job.ops.at(-1) as { position: unknown }).position).toBe('top-left');
+  });
+});

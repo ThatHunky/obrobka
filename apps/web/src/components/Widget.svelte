@@ -13,6 +13,7 @@
   import PositionPicker from './PositionPicker.svelte';
   import ExifPanel from './ExifPanel.svelte';
   import BatchPanel from './BatchPanel.svelte';
+  import Stage from './Stage.svelte';
   import { KEEP_SIZE } from '../data/page.js';
   import { dict, type Locale } from '../lib/i18n.js';
   import * as Comlink from 'comlink';
@@ -888,17 +889,33 @@
   {/if}
 
   <!-- Результат -->
-  {#if !isBatch && (sourceUrl !== '' || busy)}
-    <div class="stage" class:busy>
-      <figure class="pane">
-        <figcaption><span class="tag">{t.before}</span></figcaption>
-        <div class="canvas checker">
-          {#if sourceUrl !== ''}<img src={sourceUrl} alt={t.before} />{/if}
-        </div>
-        <p class="meta">
-          {#if sourceDims}{sourceDims.w}×{sourceDims.h}{/if} · {kb(sourceSize)}
-        </p>
-      </figure>
+  <!--
+    Сцена рендериться завжди, видимістю керує hidden.
+
+    Це та сама пастка, що колись зловила панель EXIF: компонент,
+    використаний лише всередині {#if}, опинявся в JS-чанку, а його
+    CSS-модуль Rollup викидав — сцена приїжджала голим HTML без рамки,
+    без шахівниці й, найгірше, без touch-action: none, тобто на телефоні
+    палець гортав сторінку замість кадру. Перевірено на цій же збірці:
+    варто додати безумовний виклик Stage — і стилі з'являються.
+  -->
+  <div class="stage" class:busy hidden={isBatch || (sourceUrl === '' && !busy)}>
+      <Stage
+        src={sourceUrl}
+        dims={sourceDims}
+        targetW={state.width}
+        targetH={state.height}
+        mode={state.mode}
+        position={state.position}
+        zoom={state.zoom}
+        meta={`${sourceDims ? `${sourceDims.w}×${sourceDims.h}` : ''} · ${kb(sourceSize)}`}
+        {t}
+        onchange={(p) => {
+          state.position = p.position;
+          state.zoom = p.zoom;
+          void process();
+        }}
+      />
 
       <div class="arrow" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
@@ -932,24 +949,23 @@
           {#if elapsed > 0}<span class="ms">{elapsed} {t.units.ms}</span>{/if}
         </p>
       </figure>
-    </div>
+  </div>
 
-    {#if resultUrl !== ''}
-      <a
-        class="btn btn-accent download"
-        href={resultUrl}
-        download={`${sourceName || 'image'}${
-          resultDims ? `-${resultDims.w}x${resultDims.h}` : ''
-        }.${state.format}`}
-        data-testid="download"
-      >
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-             stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M12 4v12m0 0 5-5m-5 5-5-5" /><path d="M4 18v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1" />
-        </svg>
-        {t.download}
-      </a>
-    {/if}
+  {#if !isBatch && resultUrl !== ''}
+    <a
+      class="btn btn-accent download"
+      href={resultUrl}
+      download={`${sourceName || 'image'}${
+        resultDims ? `-${resultDims.w}x${resultDims.h}` : ''
+      }.${state.format}`}
+      data-testid="download"
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M12 4v12m0 0 5-5m-5 5-5-5" /><path d="M4 18v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1" />
+      </svg>
+      {t.download}
+    </a>
   {/if}
 
   <!--
@@ -1198,6 +1214,8 @@
     align-items: center;
     gap: 0.8rem;
   }
+  /* display: grid перебиває типове [hidden] { display: none } */
+  .stage[hidden] { display: none; }
   @media (max-width: 34rem) {
     .stage { grid-template-columns: 1fr; }
     .arrow { transform: rotate(90deg); justify-self: center; }

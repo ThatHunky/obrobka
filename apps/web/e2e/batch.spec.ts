@@ -22,8 +22,10 @@ test('кілька файлів вмикають пакетний режим', a
   await openMany(page, await three());
   await expect(page.getByTestId('batch-count')).toContainText('3');
   await expect(page.getByTestId('batch-item')).toHaveCount(3);
-  // Одиночне прев'ю «було / стало» в пакеті не показується.
-  await expect(page.locator('.stage')).toHaveCount(0);
+  // Одиночне прев'ю «було / стало» в пакеті не показується. Сцена тепер
+  // є в розмітці завжди — інакше Rollup викидав її CSS, — тож перевіряємо
+  // видимість, а не наявність.
+  await expect(page.locator('.stage')).toBeHidden();
   await expect(page.locator('.error')).toHaveCount(0);
 });
 
