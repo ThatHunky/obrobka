@@ -13,16 +13,18 @@
     "@astrojs/svelte": "9.0.1",
     "@obrobka/codecs": "workspace:*",
     "@obrobka/core": "workspace:*",
+    "@obrobka/heic": "workspace:*",
+    "@obrobka/metadata": "workspace:*",
     "@obrobka/models": "workspace:*",
     "@obrobka/onnx-web": "workspace:*",
     "astro": "7.2.3",
     "comlink": "4.4.2",
     "fflate": "0.8.3",
-    "svelte": "5.56.9",
-    "@obrobka/heic": "workspace:*",
-    "@obrobka/metadata": "workspace:*"
+    "svelte": "5.56.9"
   },
   "devDependencies": {
-    "@types/node": "24.10.1"
+    "@astrojs/check": "0.9.10",
+    "@types/node": "24.10.1",
+    "typescript": "6.0.2"
   }
 }

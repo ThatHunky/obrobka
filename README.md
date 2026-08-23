@@ -142,6 +142,17 @@ pnpm test
 pnpm --filter @obrobka/web dev
 ```
 
+`pnpm typecheck` ends with `astro check`, which needs a second TypeScript. The
+Astro language server calls a programmatic API that TypeScript 7 — the Go port
+this repo builds with — does not ship yet, so `apps/web` keeps a local
+TypeScript 6 purely for that step. The root still compiles with 7.
+
+It covers `.astro` and `.ts`. **`.svelte` files stay outside it** — verified by
+planting a type error in a component and watching the check pass. `svelte-check`
+is the tool for those, but under TypeScript 6 it fails to resolve the runes and
+reports 26 errors that are not there, so it is not wired in. Svelte type errors
+currently surface only at build time.
+
 Some tests need a real HEIC, which cannot be generated locally — libheif only
 reads. The file is fetched once from the HEIF conformance set and cached in
 `~/.cache/obrobka/fixtures`, alongside the models. Everything else, including
