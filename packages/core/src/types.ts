@@ -35,10 +35,18 @@ export interface RGBA {
  */
 export type FitMode = 'contain' | 'cover' | 'fill' | 'inside' | 'outside';
 
-/** Дев'ять точок прив'язки плюс явне зміщення в пікселях. */
+/**
+ * Дев'ять точок прив'язки, частка вільного місця або зміщення в пікселях.
+ *
+ * Частка — узагальнення іменованих точок: `top-left` це `{fx: 0, fy: 0}`,
+ * `center` — `{fx: 0.5, fy: 0.5}`. На відміну від пікселів вона означає
+ * те саме після зміни цільового розміру й на кожному файлі пакета, тож
+ * саме її дає тягнення в інтерфейсі.
+ */
 export type Position =
   | 'center' | 'top' | 'bottom' | 'left' | 'right'
   | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  | { readonly fx: number; readonly fy: number }
   | { readonly x: number; readonly y: number };
 
 export const POSITIONS = [

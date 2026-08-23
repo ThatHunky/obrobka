@@ -11,11 +11,23 @@ function solid(width: number, height: number, color: RGBA): RasterImage {
   return { data, width, height };
 }
 
+function clamp01(v: number): number {
+  return Number.isFinite(v) ? (v < 0 ? 0 : v > 1 ? 1 : v) : 0;
+}
+
 /** Зміщення внутрішнього прямокутника всередині зовнішнього. */
 function place(
   outerW: number, outerH: number, innerW: number, innerH: number, position: Position,
 ): readonly [number, number] {
-  if (typeof position === 'object') return [Math.round(position.x), Math.round(position.y)];
+  if (typeof position === 'object') {
+    if ('fx' in position) {
+      return [
+        Math.round((outerW - innerW) * clamp01(position.fx)),
+        Math.round((outerH - innerH) * clamp01(position.fy)),
+      ];
+    }
+    return [Math.round(position.x), Math.round(position.y)];
+  }
   const cx = Math.round((outerW - innerW) / 2);
   const cy = Math.round((outerH - innerH) / 2);
   const right = outerW - innerW;

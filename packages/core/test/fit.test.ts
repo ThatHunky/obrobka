@@ -75,3 +75,47 @@ describe('fit', () => {
     expect(pixelAt(out, 50, 99)).toEqual(CLEAR);
   });
 });
+
+describe('прив’язка часткою люфту', () => {
+  it('нулі збігаються з top-left', () => {
+    const opts = { width: 100, height: 100, mode: 'cover' as const };
+    const named = fit(solidImage(200, 100, RED), { ...opts, position: 'top-left' });
+    const frac = fit(solidImage(200, 100, RED), { ...opts, position: { fx: 0, fy: 0 } });
+    expect(Array.from(frac.data)).toEqual(Array.from(named.data));
+  });
+
+  it('половини збігаються з center', () => {
+    const opts = { width: 100, height: 100, mode: 'cover' as const };
+    const named = fit(solidImage(200, 100, RED), { ...opts, position: 'center' });
+    const frac = fit(solidImage(200, 100, RED), { ...opts, position: { fx: 0.5, fy: 0.5 } });
+    expect(Array.from(frac.data)).toEqual(Array.from(named.data));
+  });
+
+  it('одиниці збігаються з bottom-right', () => {
+    const opts = { width: 100, height: 100, mode: 'contain' as const };
+    const named = fit(solidImage(200, 100, RED), { ...opts, position: 'bottom-right' });
+    const frac = fit(solidImage(200, 100, RED), { ...opts, position: { fx: 1, fy: 1 } });
+    expect(Array.from(frac.data)).toEqual(Array.from(named.data));
+  });
+
+  it('зміщує кадр по горизонталі', () => {
+    // Ліва половина червона, права синя; кадр 50×100 з 200×100.
+    const img = solidImage(200, 100, RED);
+    for (let y = 0; y < 100; y++) {
+      for (let x = 100; x < 200; x++) {
+        const i = (y * 200 + x) * 4;
+        img.data[i] = 0; img.data[i + 2] = 255;
+      }
+    }
+    const opts = { width: 50, height: 100, mode: 'cover' as const };
+    expect(pixelAt(fit(img, { ...opts, position: { fx: 0, fy: 0 } }), 25, 50)).toEqual(RED);
+    expect(pixelAt(fit(img, { ...opts, position: { fx: 1, fy: 0 } }), 25, 50)).toEqual(BLUE);
+  });
+
+  it('затискає значення поза 0..1', () => {
+    const opts = { width: 100, height: 100, mode: 'contain' as const };
+    const clamped = fit(solidImage(200, 100, RED), { ...opts, position: { fx: -3, fy: 9 } });
+    const edge = fit(solidImage(200, 100, RED), { ...opts, position: { fx: 0, fy: 1 } });
+    expect(Array.from(clamped.data)).toEqual(Array.from(edge.data));
+  });
+});
