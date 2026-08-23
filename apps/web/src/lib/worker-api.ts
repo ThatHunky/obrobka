@@ -148,6 +148,9 @@ export interface WorkerApi {
   warmUpUpscaler(
     factor: 2 | 4, onProgress: (fraction: number) => void,
   ): Promise<Provider | null>;
+  decodeOverlay(
+    bytes: ArrayBuffer, mime: string,
+  ): Promise<{ data: ArrayBuffer; width: number; height: number }>;
 }
 
 const workers: Comlink.Remote<WorkerApi>[] = [];

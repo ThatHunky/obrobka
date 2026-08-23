@@ -17,6 +17,19 @@ const codec = withDecoder(browserCodec, 'image/heic', decodeHeic);
 let lastProvider: Provider | null = null;
 
 /**
+ * Межа роздільності накладеного зображення.
+ *
+ * Чотири шари 4000×3000 у RGBA — це близько 190 МБ у вкладці, і жоден із
+ * них не малюється в такому розмірі: наклейку видно на частку ширини
+ * кадру. Дві тисячі лишають запас навіть для шару на всю ширину 4K.
+ *
+ * Константа живе тут, а не поруч з описом API: worker-api.ts спавнить
+ * воркери через new Worker(new URL('./worker.ts')), і зустрічний імпорт
+ * замкнув би цикл, а заразом затягнув би код спавнення в сам воркер.
+ */
+const MAX_OVERLAY_SIDE = 2048;
+
+/**
  * Сегментатори кешуються між викликами: створювати сесію ONNX заново
  * на кожен рух повзунка означало б щоразу компілювати модель.
  */
@@ -116,6 +129,27 @@ const api = {
     copy.set(out);
     return Comlink.transfer(
       { buf: copy.buffer, width: img.width, height: img.height },
+      [copy.buffer],
+    );
+  },
+
+  /**
+   * Декодує накладене зображення в RGBA й одразу зменшує до межі.
+   *
+   * Повертаємо саме пікселі, а не файл: шар лежить у Job, а Job має
+   * лишатись придатним до structured clone. Кодувати назад у PNG лише
+   * для того, щоб декодувати ще раз на кожен прогін, було б безглуздо.
+   */
+  async decodeOverlay(
+    bytes: ArrayBuffer, mime: string,
+  ): Promise<{ data: ArrayBuffer; width: number; height: number }> {
+    const img = await codec.decode(new Uint8Array(bytes), mime);
+    const capped = Math.max(img.width, img.height) > MAX_OVERLAY_SIDE
+      ? fit(img, { width: MAX_OVERLAY_SIDE, height: MAX_OVERLAY_SIDE, mode: 'inside' })
+      : img;
+    const copy = new Uint8ClampedArray(capped.data);
+    return Comlink.transfer(
+      { data: copy.buffer, width: capped.width, height: capped.height },
       [copy.buffer],
     );
   },
