@@ -9,6 +9,7 @@ const base: WidgetState = {
   outlineOn: false, outlineWidth: 8, outlineColor: '#ffffff',
   position: 'center', framing: 'none', framingPadding: 0.08,
   upscale: 1,
+  zoom: 1,
 };
 
 const types = (s: WidgetState): string[] => buildJob(s).ops.map((o) => o.type);
@@ -103,5 +104,23 @@ describe('needsModel', () => {
 
   it('видалення фону потребує моделі', () => {
     expect(needsModel({ ...base, removeBg: true })).toBe(true);
+  });
+});
+
+describe('кадрування тягненням', () => {
+  const fitOp = (s: WidgetState) =>
+    buildJob(s).ops.find((o) => o.type === 'fit') as { zoom?: number; position?: unknown };
+
+  it('одиничне наближення не потрапляє в Job', () => {
+    expect(fitOp({ ...base, zoom: 1 }).zoom).toBeUndefined();
+  });
+
+  it('наближення передається в fit', () => {
+    expect(fitOp({ ...base, zoom: 2.5 }).zoom).toBe(2.5);
+  });
+
+  it('зміщення часткою передається як є', () => {
+    expect(fitOp({ ...base, position: { fx: 0.25, fy: 0.75 } }).position)
+      .toEqual({ fx: 0.25, fy: 0.75 });
   });
 });

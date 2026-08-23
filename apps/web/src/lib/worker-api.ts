@@ -24,6 +24,8 @@ export interface WidgetState {
   readonly framingPadding: number;
   /** 1 — без збільшення. */
   readonly upscale: 1 | 2 | 4;
+  /** Наближення кадру, 1 — без наближення. */
+  readonly zoom: number;
   readonly outlineOn: boolean;
   readonly outlineWidth: number;
   readonly outlineColor: string;
@@ -87,6 +89,8 @@ export function buildJob(s: WidgetState): Job {
     ops.push({ type: 'upscale', factor: s.upscale });
   }
 
+  // Одиничне наближення в Job не кладемо: воно нічого не змінює, а в
+  // пакетному режимі зайве поле робило б два однакові прогони різними.
   ops.push({
     type: 'fit',
     width: s.width,
@@ -95,6 +99,7 @@ export function buildJob(s: WidgetState): Job {
     pad: s.padTransparent ? 'transparent' : parseHexColor(s.padColor),
     allowUpscale: s.allowUpscale,
     position: s.position,
+    ...(s.zoom > 1 ? { zoom: s.zoom } : {}),
   });
 
   return {
