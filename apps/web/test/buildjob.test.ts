@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildJob, needsModel, type WidgetState } from '../src/lib/worker-api.js';
+import { buildJob, needsModel, type UiLayer, type WidgetState } from '../src/lib/worker-api.js';
 
 const base: WidgetState = {
   width: 512, height: 512, mode: 'contain',
@@ -10,6 +10,7 @@ const base: WidgetState = {
   position: 'center', framing: 'none', framingPadding: 0.08,
   upscale: 1,
   zoom: 1,
+  layers: [],
 };
 
 const types = (s: WidgetState): string[] => buildJob(s).ops.map((o) => o.type);
@@ -144,5 +145,57 @@ describe('Job переживає structured clone', () => {
     const job = buildJob({ ...base, position: 'top-left' });
     expect(() => structuredClone(job)).not.toThrow();
     expect((job.ops.at(-1) as { position: unknown }).position).toBe('top-left');
+  });
+});
+
+const px = (w: number, h: number) => ({
+  data: new Uint8ClampedArray(w * h * 4), width: w, height: h,
+});
+
+const uiLayer = (over: Partial<UiLayer> = {}): UiLayer => ({
+  id: 1, name: 'a.png', hidden: false, thumb: '',
+  image: px(4, 4), x: 0.5, y: 0.5, scale: 0.3, ...over,
+});
+
+describe('шари', () => {
+  it('без шарів операції немає', () => {
+    expect(types(base)).toEqual(['fit']);
+  });
+
+  it('шари йдуть останніми, після fit', () => {
+    expect(types({ ...base, layers: [uiLayer()] })).toEqual(['fit', 'composite']);
+  });
+
+  it('після збільшення й кадрування теж останні', () => {
+    expect(types({ ...base, framing: 'smart', upscale: 2, layers: [uiLayer()] }))
+      .toEqual(['smartCrop', 'upscale', 'fit', 'composite']);
+  });
+
+  it('приховані шари не потрапляють у Job', () => {
+    expect(types({ ...base, layers: [uiLayer({ hidden: true })] })).toEqual(['fit']);
+  });
+
+  it('у Job не їдуть поля інтерфейсу', () => {
+    const op = buildJob({ ...base, layers: [uiLayer()] }).ops
+      .find((o) => o.type === 'composite') as { layers: readonly object[] };
+    expect(Object.keys(op.layers[0]!).sort()).toEqual(['image', 'scale', 'x', 'y']);
+  });
+
+  it('необовʼязкові поля їдуть, коли задані', () => {
+    const op = buildJob({
+      ...base,
+      layers: [uiLayer({ rotation: 30, opacity: 0.4, blend: 'multiply' })],
+    }).ops.find((o) => o.type === 'composite') as { layers: readonly object[] };
+    expect(op.layers[0]).toMatchObject({ rotation: 30, opacity: 0.4, blend: 'multiply' });
+  });
+
+  it('шари переживають structured clone', () => {
+    // Той самий проксі Svelte, що ламав прив'язку: шар лежить у стані,
+    // тож і він, і його піксельний масив приїжджають сюди проксями.
+    const proxied = new Proxy(uiLayer({
+      image: new Proxy(px(4, 4), {}),
+    }), {});
+    const job = buildJob({ ...base, layers: [proxied] });
+    expect(() => structuredClone(job)).not.toThrow();
   });
 });

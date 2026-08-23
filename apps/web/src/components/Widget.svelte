@@ -57,6 +57,7 @@
     framingPadding: 0.08,
     upscale: 1,
     zoom: 1,
+    layers: [],
   });
 
   let tileProgress = $state<{ done: number; total: number } | null>(null);

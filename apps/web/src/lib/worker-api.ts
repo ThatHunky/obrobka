@@ -1,8 +1,25 @@
 import * as Comlink from 'comlink';
-import type { FitMode, Job, Op, OutputFormat, Position, RGBA, Tier } from '@obrobka/core';
+import type {
+  FitMode, Job, Layer, Op, OutputFormat, Position, RGBA, Tier,
+} from '@obrobka/core';
 import type { Metadata } from '@obrobka/metadata';
 
 export type Provider = 'webgpu' | 'wasm';
+
+/**
+ * Шар разом із тим, що потрібно лише інтерфейсу.
+ *
+ * id, назва, мініатюра й ознака видимості живуть у списку панелі й до
+ * ядра не мають стосунку — у Job їде сам Layer і нічого більше.
+ */
+export interface UiLayer extends Layer {
+  readonly id: number;
+  readonly name: string;
+  /** Прихований шар лишається в списку, але не потрапляє в Job. */
+  readonly hidden: boolean;
+  /** objectURL мініатюри для списку. */
+  readonly thumb: string;
+}
 
 export interface WidgetState {
   readonly width: number;
@@ -29,6 +46,7 @@ export interface WidgetState {
   readonly outlineOn: boolean;
   readonly outlineWidth: number;
   readonly outlineColor: string;
+  readonly layers: readonly UiLayer[];
 }
 
 export function parseHexColor(hex: string): RGBA {
@@ -51,6 +69,29 @@ export function parseHexColor(hex: string): RGBA {
  * переживає: перше ж тягнення падало з «could not be cloned». Іменована
  * прив'язка — рядок, її копіювати нема потреби.
  */
+/**
+ * Шар як звичайні дані.
+ *
+ * Та сама причина, що й у plainPosition, але глибша: у стані проксі стає
+ * і сам шар, і його RasterImage, і навіть Uint8ClampedArray усередині —
+ * structured clone не переживає жодного з них.
+ */
+function plainLayer(l: UiLayer): Layer {
+  return {
+    image: {
+      data: new Uint8ClampedArray(l.image.data),
+      width: l.image.width,
+      height: l.image.height,
+    },
+    x: l.x,
+    y: l.y,
+    scale: l.scale,
+    ...(l.rotation !== undefined ? { rotation: l.rotation } : {}),
+    ...(l.opacity !== undefined ? { opacity: l.opacity } : {}),
+    ...(l.blend !== undefined ? { blend: l.blend } : {}),
+  };
+}
+
 function plainPosition(p: Position): Position {
   if (typeof p !== 'object') return p;
   return 'fx' in p ? { fx: p.fx, fy: p.fy } : { x: p.x, y: p.y };
@@ -114,6 +155,15 @@ export function buildJob(s: WidgetState): Job {
     position: plainPosition(s.position),
     ...(s.zoom > 1 ? { zoom: s.zoom } : {}),
   });
+
+  // Шари — останні, вже по готовому полотну. Водяний знак має лягти на те
+  // зображення, яке людина завантажить, і в те місце, яке вона бачила:
+  // до fit його перемолов би ресемплер, до upscale — нейромережа
+  // домальовувала б деталі логотипу, якого в оригіналі не було.
+  const visible = s.layers.filter((l) => !l.hidden);
+  if (visible.length > 0) {
+    ops.push({ type: 'composite', layers: visible.map(plainLayer) });
+  }
 
   return {
     ops,
