@@ -37,15 +37,18 @@ describe('компоненти', () => {
       if (!f.endsWith('.svelte')) continue;
       const src = await readFile(join(dir, f), 'utf8');
       // Коментарі українською — це нормально, вони не потрапляють в UI.
-      // Багаторядкові HTML-коментарі гасимо цілком, зберігаючи переноси,
-      // щоб номери рядків у звіті лишились правдивими.
-      const masked = src.replace(
-        /<!--[\s\S]*?-->/g,
-        (block) => '\n'.repeat((block.match(/\n/g) ?? []).length),
-      );
+      // Багаторядкові коментарі гасимо цілком, зберігаючи переноси, щоб
+      // номери рядків у звіті лишились правдивими. Блоки /* */ теж
+      // бувають на кілька рядків — у <style> це звичайна річ, і поки їх
+      // гасив лише посрядковий прохід нижче, чесний коментар до CSS
+      // потрапляв у порушники.
+      const blank = (block: string): string =>
+        '\n'.repeat((block.match(/\n/g) ?? []).length);
+      const masked = src
+        .replace(/<!--[\s\S]*?-->/g, blank)
+        .replace(/\/\*[\s\S]*?\*\//g, blank);
       masked.split('\n').forEach((line, i) => {
-        const code = line.replace(/\/\/.*$/, '');
-        const withoutComments = code.replace(/\/\*[\s\S]*?\*\//g, '');
+        const withoutComments = line.replace(/\/\/.*$/, '');
         if (!CYRILLIC.test(withoutComments)) return;
         if (/^\s*(\*|\/\/)/.test(line)) return;
         offenders.push(`${f}:${i + 1}  ${line.trim().slice(0, 70)}`);

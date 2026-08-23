@@ -93,3 +93,83 @@ test('тягнення не перезапускає обробку щокадр
   expect(runs).toBeGreaterThan(0);
   expect(runs).toBeLessThanOrEqual(2);
 });
+
+/**
+ * Прев'ю має показувати те саме, що вийде.
+ *
+ * Раніше воно будувалось із object-fit, object-position і transform:
+ * scale — зовсім інша композиція, ніж у пайплайна. object-position
+ * розподіляє ненаближений надлишок, а наближення накладалось трансформом
+ * від центра; fit() же спершу масштабує, і лише потім вирізає кадр
+ * часткою від збільшеного надлишку. Поки z = 1, обидва збігались, тож
+ * вада сиділа тихо. Наближено — і кадр показував кроля, а на виході
+ * була ковдра з кутка.
+ *
+ * Колір фікстури кодує координату, тож піксель у центрі кадру прямо
+ * каже, яку точку оригіналу туди привели.
+ */
+test("прев'ю збігається з результатом при наближенні", async ({ page }) => {
+  const { gradientPortrait } = await import('./fixtures.js');
+  await page.goto('/');
+  await expect(page.locator('input[type=file][data-ready="true"]')).toBeAttached({ timeout: 60_000 });
+  await page.setInputFiles('[data-testid="pick"]', await gradientPortrait());
+  await expect(page.getByTestId('result')).toBeVisible({ timeout: 60_000 });
+  await page.getByTestId('fit-cover').click();
+  await page.waitForTimeout(500);
+
+  const centreOf = async (): Promise<readonly [number[], number[]]> => {
+    const preview = await page.evaluate(() => {
+      const frame = document.querySelector('[data-testid="stage"]')!;
+      const img = frame.querySelector('img.source') as HTMLImageElement;
+      const fr = frame.getBoundingClientRect();
+      const ir = img.getBoundingClientRect();
+      const c = new OffscreenCanvas(img.naturalWidth, img.naturalHeight);
+      const ctx = c.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const px = Math.round(((fr.x + fr.width / 2 - ir.x) / ir.width) * img.naturalWidth);
+      const py = Math.round(((fr.y + fr.height / 2 - ir.y) / ir.height) * img.naturalHeight);
+      const d = ctx.getImageData(
+        Math.max(0, Math.min(img.naturalWidth - 1, px)),
+        Math.max(0, Math.min(img.naturalHeight - 1, py)), 1, 1,
+      ).data;
+      return [d[0]!, d[1]!];
+    });
+    const result = await page.getByTestId('result').evaluate(async (el) => {
+      const img = el as HTMLImageElement;
+      await img.decode();
+      const c = new OffscreenCanvas(img.naturalWidth, img.naturalHeight);
+      const ctx = c.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(
+        Math.floor(img.naturalWidth / 2), Math.floor(img.naturalHeight / 2), 1, 1,
+      ).data;
+      return [d[0]!, d[1]!];
+    });
+    return [preview, result] as const;
+  };
+
+  const agrees = async (label: string): Promise<void> => {
+    await page.waitForTimeout(700);
+    const [preview, result] = await centreOf();
+    // Допуск — на ресемплінг і округлення частки до пікселя
+    expect({ label, dx: Math.abs(preview[0]! - result[0]!) < 8 }).toEqual({ label, dx: true });
+    expect({ label, dy: Math.abs(preview[1]! - result[1]!) < 8 }).toEqual({ label, dy: true });
+  };
+
+  const stage = page.getByTestId('stage');
+  await stage.scrollIntoViewIfNeeded();
+  const b = (await stage.boundingBox())!;
+  await agrees('без наближення');
+
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  for (let i = 0; i < 10; i++) await page.mouse.wheel(0, -120);
+  await agrees('наближено');
+
+  for (const [dx, dy] of [[160, 0], [0, 160], [-140, -140]] as const) {
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 + dx, b.y + b.height / 2 + dy, { steps: 10 });
+    await page.mouse.up();
+    await agrees(`тягнення ${dx},${dy}`);
+  }
+});

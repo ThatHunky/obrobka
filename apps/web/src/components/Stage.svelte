@@ -232,10 +232,6 @@
   function clamp01(v: number): number { return v < 0 ? 0 : v > 1 ? 1 : v; }
   function clampZoom(v: number): number { return v < 1 ? 1 : v > 8 ? 8 : v; }
 
-  /** Прев'ю позиціюється тими самими частками, що підуть у Job. */
-  const objectPosition = $derived(`${(fx * 100).toFixed(2)}% ${(fy * 100).toFixed(2)}%`);
-  const objectFit = $derived(mode === 'cover' || mode === 'fill' ? mode : 'contain');
-
   /**
    * Пропорції рамки.
    *
@@ -245,10 +241,55 @@
    * — 200×100 у режимі «без полів» із ціллю 512×512 дає 512×256, а рамка
    * показувала квадрат.
    */
+  const frameAspect = $derived(
+    (mode === 'inside' || mode === 'outside') && dims !== null
+      ? dims.w / dims.h
+      : targetW / targetH,
+  );
   const frameRatio = $derived(
     (mode === 'inside' || mode === 'outside') && dims !== null
       ? `${dims.w} / ${dims.h}`
       : `${targetW} / ${targetH}`,
+  );
+
+  /**
+   * Геометрія прев'ю — та сама, що в place() всередині fit().
+   *
+   * Раніше тут стояли object-fit, object-position і transform: scale, і це
+   * зовсім інша композиція. object-position розподіляє *ненаближений*
+   * надлишок, а наближення накладалось трансформом поверх, від центра;
+   * пайплайн же спершу масштабує, і лише потім вирізає кадр часткою від
+   * *збільшеного* надлишку. Поки z = 1, обидва збігаються — тому й
+   * непомітно було. Щойно наближено, прев'ю починало брехати: на
+   * пейзажному кадрі ненаближений надлишок по вертикалі рівно нульовий,
+   * тож вертикальне тягнення не рухало нічого взагалі, а горизонтальне
+   * їхало приблизно на 15 % повільніше за палець.
+   *
+   * Розміри рахуються частками рамки, тож DOM міряти не треба: досить
+   * пропорцій рамки й пропорцій оригіналу.
+   */
+  const preview = $derived.by(() => {
+    if (dims === null) return null;
+    const a = frameAspect;
+    const f = dims.w / dims.h;
+    const sw = mode === 'fill' ? z
+      : mode === 'cover' ? z * Math.max(1, f / a)
+      : z * Math.min(1, f / a);
+    const sh = mode === 'fill' ? z
+      : mode === 'cover' ? z * Math.max(1, a / f)
+      : z * Math.min(1, a / f);
+    // Те саме, що place(): зміщення — частка вільного місця. У cover воно
+    // від'ємне (зображення більше за рамку), у contain додатне.
+    return { sw, sh, left: (1 - sw) * fx, top: (1 - sh) * fy };
+  });
+
+  const sourceStyle = $derived(
+    preview === null
+      ? 'width: 100%; height: 100%; object-fit: contain;'
+      : `left: ${(preview.left * 100).toFixed(4)}%;`
+        + ` top: ${(preview.top * 100).toFixed(4)}%;`
+        + ` width: ${(preview.sw * 100).toFixed(4)}%;`
+        + ` height: ${(preview.sh * 100).toFixed(4)}%;`,
   );
 
   function onKeyDown(e: KeyboardEvent): void {
@@ -327,13 +368,7 @@
     onkeydown={onKeyDown}
   >
     {#if src !== ''}
-      <img
-        class="source"
-        {src}
-        alt={t.before}
-        draggable="false"
-        style={`object-fit: ${objectFit}; object-position: ${objectPosition}; transform: scale(${z});`}
-      />
+      <img class="source" {src} alt={t.before} draggable="false" style={sourceStyle} />
     {/if}
 
     {#each layers as l (l.id)}
@@ -391,7 +426,10 @@
    * розтягувалось на всю висоту кадру й не збігалося з результатом.
    */
   .frame .source {
-    width: 100%; height: 100%;
+    position: absolute;
+    /* base.css ставить усім картинкам max-width: 100%; при наближенні
+       воно тихо підрізало б ширину до рамки й ламало всю геометрію. */
+    max-width: none;
     user-select: none; -webkit-user-drag: none;
   }
   /*

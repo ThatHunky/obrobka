@@ -68,3 +68,30 @@ export async function plainJpeg(name = 'plain.jpg'): Promise<string> {
 export async function heicSample(): Promise<string> {
   return ensureFixture('sample.heic');
 }
+
+/**
+ * Портрет, у якому колір кодує саму координату: R = x/w, G = y/h.
+ *
+ * Потрібен, щоб порівняти прев'ю з результатом із точністю до пікселя:
+ * за кольором у центрі кадру видно, яку саме точку оригіналу туди
+ * привели. На сітці з кількох кольорів це не ловилось — рух на сотню
+ * пікселів не виводив центр за межі клітинки.
+ */
+export async function gradientPortrait(): Promise<string> {
+  const width = 957;
+  const height = 1271;
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      data[i] = Math.round((x / (width - 1)) * 255);
+      data[i + 1] = Math.round((y / (height - 1)) * 255);
+      data[i + 2] = 128;
+      data[i + 3] = 255;
+    }
+  }
+  const bytes = await nodeCodec.encode({ data, width, height }, { format: 'png' });
+  const path = join(await tempDir(), 'gradient.png');
+  await writeFile(path, bytes);
+  return path;
+}
