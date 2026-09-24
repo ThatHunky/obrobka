@@ -267,6 +267,10 @@ const DEFAULT_LIMIT = 100;
 
 function batchJob(args: BatchArgs): Job {
   const ops: Op[] = [];
+  // Та сама перевірка, що й у remove_background: без альфи фон вийшов би чорним
+  if (args.removeBackground === true && (args.format as string) === 'jpeg') {
+    throw new Error('JPEG не підтримує прозорість — оберіть png, webp або avif');
+  }
   if (args.removeBackground === true) {
     ops.push({ type: 'removeBackground', tier: args.tier ?? 'fast' });
   }
@@ -315,6 +319,8 @@ function uniqueName(taken: Set<string>, base: string, format: OutputFormat): str
  * результатів детермінований: інакше агент не зіставить їх із входом.
  */
 export async function processBatch(args: BatchArgs): Promise<BatchResult> {
+  // Хибне поєднання параметрів — до того, як створено теку й знайдено файли
+  const job = batchJob(args);
   const limit = args.limit ?? DEFAULT_LIMIT;
   const found: string[] = [];
   for await (const entry of glob(args.pattern, { cwd: args.cwd ?? process.cwd() })) {
@@ -325,7 +331,6 @@ export async function processBatch(args: BatchArgs): Promise<BatchResult> {
   const selected = found.slice(0, limit);
   await mkdir(args.outputDir, { recursive: true });
 
-  const job = batchJob(args);
   const taken = new Set<string>();
   const outputs: ToolResult[] = [];
   const errors: BatchFailure[] = [];

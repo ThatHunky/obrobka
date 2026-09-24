@@ -106,6 +106,13 @@ describe('process_batch', () => {
     expect(r.skipped).toBe(0);
   }, 30_000);
 
+  it('не дає зняти фон у JPEG — фон вийшов би чорним', async () => {
+    await expect(processBatch({
+      pattern: '*.jpg', cwd: inDir, outputDir: join(dir, 'o-jpeg'),
+      format: 'jpeg', removeBackground: true,
+    })).rejects.toThrow(/JPEG/);
+  });
+
   it('битий файл не зупиняє решту', async () => {
     const r = await processBatch({
       pattern: '*.jpg', cwd: inDir, outputDir: join(dir, 'o2'), format: 'png',

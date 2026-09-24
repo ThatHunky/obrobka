@@ -15,7 +15,19 @@ interface Env {
 }
 
 /** Дозволені операції. Усе інше відкидається, щоб у базу не сипалось сміття. */
-const OPS = new Set(['convert', 'resize', 'removeBackground', 'outline', 'smartCrop', 'trim']);
+const OPS = new Set([
+  'convert', 'resize', 'removeBackground', 'outline', 'smartCrop', 'trim',
+  'upscale', 'composite', 'paint',
+]);
+
+/**
+ * Назви операцій Job, що рахуються під іншим ім'ям.
+ *
+ * Вкладка шле типи операцій як є, а зміна розміру там зветься `fit`.
+ * Без цього звичайний прогін «змінити розмір» відфільтровувався до нуля
+ * й не рахувався зовсім — навіть у `runs`.
+ */
+const ALIASES: Readonly<Record<string, string>> = { fit: 'resize' };
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -33,7 +45,10 @@ async function tick(req: Request, env: Env): Promise<Response> {
   try {
     const body = (await req.json()) as { ops?: unknown };
     if (Array.isArray(body.ops)) {
-      ops = body.ops.filter((o): o is string => typeof o === 'string' && OPS.has(o));
+      ops = body.ops
+        .filter((o): o is string => typeof o === 'string')
+        .map((o) => ALIASES[o] ?? o)
+        .filter((o) => OPS.has(o));
     }
   } catch {
     return json({ error: 'bad body' }, 400);
