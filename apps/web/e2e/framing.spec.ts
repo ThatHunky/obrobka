@@ -173,3 +173,57 @@ test("прев'ю збігається з результатом при набл
     await agrees(`тягнення ${dx},${dy}`);
   }
 });
+
+/**
+ * Проведення пальцем через CDP: page.touchscreen уміє лише дотик, а
+ * саме свайп мав би гортати сторінку, а не тягнути кадр.
+ */
+async function swipe(page: Page, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+  for (let i = 1; i <= 8; i++) {
+    const x = from.x + ((to.x - from.x) * i) / 8;
+    const y = from.y + ((to.y - from.y) * i) / 8;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
+test('миша кадр не блокує', async ({ page }) => {
+  await ready(page);
+  await page.getByTestId('fit-cover').click();
+  await expect(page.getByTestId('stage')).toBeVisible();
+  await expect(page.getByTestId('stage-lock')).toHaveCount(0);
+});
+
+test.describe('сенсорний екран', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test('свайп по заблокованому кадру його не рухає, дотик розблоковує', async ({ page }) => {
+    await ready(page);
+    await page.getByTestId('fit-cover').click();
+    await page.getByTestId('ratio-16:9').click();
+    await expect(page.getByTestId('anchor-center')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId('stage-lock')).toBeVisible();
+
+    let box = await stageBox(page);
+    const mid = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await swipe(page, mid, { x: box.x + 8, y: mid.y });
+    await expect(page.getByTestId('anchor-center')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId('stage')).not.toHaveClass(/\bunlocked\b/);
+
+    box = await stageBox(page);
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByTestId('stage')).toHaveClass(/\bunlocked\b/);
+
+    box = await stageBox(page);
+    await swipe(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+                { x: box.x + 8, y: box.y + box.height / 2 });
+    await expect(page.locator('[data-testid^="anchor-"][aria-checked="true"]')).toHaveCount(0);
+
+    // «Готово» повертає замок
+    await page.getByTestId('stage-lock').click();
+    await expect(page.getByTestId('stage')).not.toHaveClass(/\bunlocked\b/);
+    await expect(page.locator('.error')).toHaveCount(0);
+  });
+});

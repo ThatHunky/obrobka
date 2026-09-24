@@ -149,6 +149,37 @@
   /** Кадрувати можна лише там, де є вільне місце. */
   const movable = $derived(mode === 'contain' || mode === 'cover');
 
+  /**
+   * Замок для сенсорного екрана.
+   *
+   * На телефоні кадр займає пів екрана, а touch-action: none віддавав
+   * йому кожен дотик — тож гортання сторінки, що почалось на кадрі, тихо
+   * зсувало кадрування. Тепер на сенсорі кадр спершу заблокований і
+   * пропускає гортання крізь себе; рухати його можна, лише коли людина
+   * явно попросила — торкнулась кадру без руху або натиснула кнопку.
+   * Миша й перо працюють, як і раніше: випадково «гортнути» ними кадр
+   * неможливо.
+   */
+  let coarse = $state(false);
+  $effect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    coarse = mq.matches;
+    const on = (e: MediaQueryListEvent): void => { coarse = e.matches; };
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  });
+  let unlocked = $state(false);
+  const lockable = $derived(coarse && interactive && !brushOn);
+  const locked = $derived(lockable && !unlocked);
+
+  /**
+   * Дотик до заблокованого кадру. Якщо браузер забрав його на гортання,
+   * прийде pointercancel і замок лишиться; якщо палець майже не рухався
+   * й відпустився — це дотик, і кадр розблоковується.
+   */
+  let tap: { id: number; x: number; y: number } | null = null;
+  const TAP_SLOP = 10;
+
   /** Частки, з якими працює жест. Іменована прив'язка переводиться в них. */
   const NAMED: Record<string, [number, number]> = {
     'top-left': [0, 0], top: [0.5, 0], 'top-right': [1, 0],
@@ -237,6 +268,10 @@
       return;
     }
     if (!movable && !layerDrag) return;
+    if (locked && e.pointerType === 'touch') {
+      tap = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      return;
+    }
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     dragging = true;
@@ -294,6 +329,12 @@
       // Маски знімаємо на кінець мазка, не щокадру: та сама дисципліна,
       // що й у тягненні кадру — у воркер летить завершений жест.
       onstroke?.({ keep: toMask(keepCanvas), erase: toMask(eraseCanvas) });
+      return;
+    }
+    if (tap !== null && tap.id === e.pointerId) {
+      const still = Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < TAP_SLOP;
+      if (e.type === 'pointerup' && still) unlocked = true;
+      tap = null;
       return;
     }
     pointers.delete(e.pointerId);
@@ -452,6 +493,12 @@
     {#if z > 1}
       <span class="zoom" data-testid="zoom-value">{z.toFixed(1)}×</span>
     {/if}
+    {#if lockable}
+      <button type="button" class="lock" class:on={unlocked} data-testid="stage-lock"
+              onclick={() => { unlocked = !unlocked; }}>
+        {unlocked ? t.crop.lock : t.crop.unlock}
+      </button>
+    {/if}
     {#if movable && !brushOn}
       <button type="button" class="reset" data-testid="framing-reset"
               title={t.crop.reset} aria-label={t.crop.reset} onclick={reset}>⟲</button>
@@ -460,7 +507,9 @@
 
   <div
     class="frame checker"
-    class:movable={movable && !brushOn}
+    class:movable={interactive && !brushOn}
+    class:locked
+    class:unlocked={lockable && unlocked}
     class:dragging
     class:painting={brushOn}
     bind:this={frame}
@@ -522,6 +571,8 @@
   {#if meta !== ''}<p class="meta">{meta}</p>{/if}
   {#if brushOn}
     <p class="hint">{t.brush.hint}</p>
+  {:else if locked}
+    <p class="hint">{t.crop.lockedHint}</p>
   {:else if movable}
     <p class="hint">{t.crop.dragHint}</p>
   {/if}
@@ -542,6 +593,14 @@
     background: var(--bg-sunken); cursor: pointer; line-height: 1;
   }
   .reset:hover { border-color: var(--accent); }
+  .lock {
+    margin-inline-start: auto;
+    min-height: 1.6rem; padding: 0 0.6rem;
+    border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+    background: var(--bg-sunken); cursor: pointer; font-size: 0.78rem;
+  }
+  .lock.on { border-color: var(--accent); color: var(--accent); }
+  .lock + .reset { margin-inline-start: 0; }
 
   .frame {
     position: relative;
@@ -555,6 +614,10 @@
   /* Без цього палець гортає сторінку замість кадру. */
   .frame.movable { cursor: grab; touch-action: none; }
   .frame.dragging { cursor: grabbing; }
+  /* Заблокований кадр віддає палець сторінці: гортання крізь нього — це гортання. */
+  .frame.movable.locked { touch-action: auto; }
+  /* Розблокований видно здалеку — інакше незрозуміло, чому сторінка не гортається */
+  .frame.unlocked { outline: 2px solid var(--accent); outline-offset: 2px; }
   /*
    * Тільки джерело, не шари. Селектор `.frame img` мав вищу вагу за
    * `.ghost`, тож його height: 100% перебивав height: auto — прев'ю шару

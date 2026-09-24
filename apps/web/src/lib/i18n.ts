@@ -70,6 +70,9 @@ export interface Dict {
     dragHint: string;
     zoom: string;
     reset: string;
+    unlock: string;
+    lock: string;
+    lockedHint: string;
   };
   brush: {
     section: string;
@@ -245,6 +248,9 @@ const uk: Dict = {
     dragHint: 'Тягніть зображення, щоб посунути кадр. Колесо або два пальці — наблизити.',
     zoom: 'Наближення',
     reset: 'Скинути кадр',
+    unlock: 'Рухати',
+    lock: 'Готово',
+    lockedHint: 'Торкніться кадру або «Рухати», щоб посунути його. Доти сторінка гортається як звичайно.',
   },
   brush: {
     section: 'Пензель',
@@ -433,6 +439,9 @@ const en: Dict = {
     dragHint: 'Drag the image to move the frame. Wheel or two fingers to zoom.',
     zoom: 'Zoom',
     reset: 'Reset the frame',
+    unlock: 'Move',
+    lock: 'Done',
+    lockedHint: 'Tap the frame or “Move” to adjust it. Until then the page scrolls as usual.',
   },
   brush: {
     section: 'Brush',
