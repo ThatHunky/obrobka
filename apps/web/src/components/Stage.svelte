@@ -71,12 +71,24 @@
 
   let eraseCanvas = $state<HTMLCanvasElement | null>(null);
   let keepCanvas = $state<HTMLCanvasElement | null>(null);
-  let painting = false;
+  /**
+   * Палець, що малює. Другий палець ігнорується: спільна остання точка
+   * з'єднала б обидва дотики прямою лінією через увесь кадр.
+   */
+  let paintingId: number | null = null;
   let lastPoint: { x: number; y: number } | null = null;
 
-  /** Чистимо мазки, коли панель просить, і коли змінюється розмір полотна. */
+  /**
+   * Чистимо мазки, коли панель просить, і коли змінюється розмір полотна.
+   *
+   * Саме число, а не brush.clearToken в ефекті: віджет міняє brush
+   * цілим об'єктом на кожну зміну режиму чи товщини, і ефект, що читав
+   * його поле, чистив полотна й тоді — а наступний мазок тихо заміняв
+   * усі попередні.
+   */
+  const clearToken = $derived(brush.clearToken);
   $effect(() => {
-    const token = brush.clearToken;
+    const token = clearToken;
     const size = strokeSize;
     void token; void size;
     for (const c of [eraseCanvas, keepCanvas]) {
@@ -104,28 +116,44 @@
   function paintAt(e: PointerEvent): void {
     const rect = box();
     const canvas = brush.mode === 'erase' ? eraseCanvas : keepCanvas;
+    const other = brush.mode === 'erase' ? keepCanvas : eraseCanvas;
     if (rect === null || canvas === null) return;
-    const ctx = canvas.getContext('2d');
-    if (ctx === null) return;
 
     const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
     const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    const from = lastPoint ?? { x, y };
     // Товщина задана в пікселях прев'ю — переводимо в пікселі полотна,
     // інакше на маленькому екрані мазок був би вдесятеро грубший.
-    ctx.lineWidth = Math.max(1, brush.size * (canvas.width / rect.width));
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    const width = Math.max(1, brush.size * (canvas.width / rect.width));
+
     // Малюємо непрозорим: прозорість накидає CSS. Інакше альфа
     // накопичувалась би на перетинах мазка й маска виходила б плямиста.
     // Колір вільний — маскою стає альфа, а не він; тут він лише щоб було
     // видно, де стерто, а де повернуто.
-    ctx.strokeStyle = brush.mode === 'erase' ? '#ff5f56' : '#3ecf8e';
-    ctx.beginPath();
-    if (lastPoint === null) ctx.moveTo(x, y);
-    else ctx.moveTo(lastPoint.x, lastPoint.y);
-    ctx.lineTo(x, y);
-    ctx.stroke();
+    trace(canvas, from, { x, y }, width, brush.mode === 'erase' ? '#ff5f56' : '#3ecf8e', 'source-over');
+    // Новий мазок перекриває старий протилежний: стерти повернуте чи
+    // повернути стерте. Без цього повернуте завжди перемагало б, бо
+    // ядро накладає «лишити» після «стерти».
+    if (other !== null) trace(other, from, { x, y }, width, '#000', 'destination-out');
     lastPoint = { x, y };
+  }
+
+  function trace(
+    canvas: HTMLCanvasElement,
+    a: { x: number; y: number }, b: { x: number; y: number },
+    width: number, color: string, op: GlobalCompositeOperation,
+  ): void {
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) return;
+    ctx.globalCompositeOperation = op;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
   }
 
   /** Обраний шар перехоплює жест: інакше його не було б чим рухати. */
@@ -260,9 +288,10 @@
 
   function onPointerDown(e: PointerEvent): void {
     if (brushOn) {
+      if (paintingId !== null) return;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       if (frame !== undefined) frameBox = frame.getBoundingClientRect();
-      painting = true;
+      paintingId = e.pointerId;
       lastPoint = null;
       paintAt(e);
       return;
@@ -290,7 +319,7 @@
 
   function onPointerMove(e: PointerEvent): void {
     if (brushOn) {
-      if (painting) paintAt(e);
+      if (e.pointerId === paintingId) paintAt(e);
       return;
     }
     if (!dragging || !pointers.has(e.pointerId)) return;
@@ -323,9 +352,10 @@
 
   function onPointerUp(e: PointerEvent): void {
     if (brushOn) {
-      if (!painting) return;
-      painting = false;
+      if (e.pointerId !== paintingId) return;
+      paintingId = null;
       lastPoint = null;
+      frameBox = null;
       // Маски знімаємо на кінець мазка, не щокадру: та сама дисципліна,
       // що й у тягненні кадру — у воркер летить завершений жест.
       onstroke?.({ keep: toMask(keepCanvas), erase: toMask(eraseCanvas) });
@@ -534,10 +564,17 @@
       <img class="source" {src} alt={t.before} draggable="false" style={sourceStyle} />
     {/if}
 
-    {#if brushOn}
+    <!--
+      Полотна живуть, доки є оригінал, а не лише поки ввімкнено пензель.
+      Інакше вимкнути й знову ввімкнути пензель означало б отримати чисті
+      полотна при повних масках у стані, і перший же новий мазок тихо
+      замінив би всі попередні.
+    -->
+    {#if dims !== null}
       <canvas
         bind:this={eraseCanvas}
         class="strokes erase"
+        class:off={!brushOn}
         width={strokeSize.w}
         height={strokeSize.h}
         data-testid="brush-canvas-erase"
@@ -545,6 +582,7 @@
       <canvas
         bind:this={keepCanvas}
         class="strokes keep"
+        class:off={!brushOn}
         width={strokeSize.w}
         height={strokeSize.h}
         data-testid="brush-canvas-keep"
@@ -645,6 +683,7 @@
     opacity: 0.5;
     image-rendering: auto;
   }
+  .strokes.off { display: none; }
   .frame.painting { cursor: crosshair; touch-action: none; }
 
   /*

@@ -313,6 +313,7 @@ const uk: Dict = {
       resize: 'зміна розміру', convert: 'конвертація',
       removeBackground: 'видалення фону', outline: 'обведення',
       smartCrop: 'розумна обрізка', trim: 'обрізка країв',
+      upscale: 'збільшення', composite: 'накладання', paint: 'пензель',
     },
   },
   batch: {
@@ -504,6 +505,7 @@ const en: Dict = {
       resize: 'resize', convert: 'convert',
       removeBackground: 'background removal', outline: 'outline',
       smartCrop: 'smart crop', trim: 'trim edges',
+      upscale: 'upscale', composite: 'overlay', paint: 'brush',
     },
   },
   batch: {

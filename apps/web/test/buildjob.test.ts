@@ -249,11 +249,11 @@ describe('пензель', () => {
     expect(types(base)).toEqual(['fit']);
   });
 
-  it('іде після зняття фону й до кадрування', () => {
+  it('іде після зняття фону, до обведення й до кадрування', () => {
     expect(types({
       ...base, removeBg: true, outlineOn: true, framing: 'smart', upscale: 2,
       paint: { keep: null, erase: stroke(4, 4) },
-    })).toEqual(['removeBackground', 'outline', 'paint', 'smartCrop', 'upscale', 'fit']);
+    })).toEqual(['removeBackground', 'paint', 'outline', 'smartCrop', 'upscale', 'fit']);
   });
 
   it('сам по собі, без моделі, теж працює', () => {

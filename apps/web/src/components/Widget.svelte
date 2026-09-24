@@ -2,7 +2,7 @@
   import { sniffMime } from '@obrobka/codecs';
   import type { FitMode, OutputFormat, Position, Tier } from '@obrobka/core';
   import type { Metadata } from '@obrobka/metadata';
-  import type { Mask } from '@obrobka/core';
+  import type { Job, Mask } from '@obrobka/core';
   import {
     buildJob, getWorker, getWorkerSlot, needsModel, type WidgetState,
     type UiLayer,
@@ -293,32 +293,49 @@
     return { url, dims };
   }
 
+  /**
+   * Мітка вибору файлу.
+   *
+   * Прев'ю HEIC будується у воркері й може йти секунду. Якщо за цей час
+   * людина кинула інший файл, старе прев'ю, завершившись пізніше, лягло б
+   * поверх нового: сцена показувала б один файл, а оброблявся б інший.
+   */
+  let acceptToken = 0;
+
   async function accept(file: File): Promise<void> {
+    const token = ++acceptToken;
     error = '';
     clearBatch();
     const bytes = new Uint8Array(await file.arrayBuffer());
+    if (token !== acceptToken) return;
     const mime = sniffMime(bytes);
     if (mime === null) {
       error = t.errUnknownFormat;
       return;
     }
-    sourceBytes = bytes;
-    sourceMime = mime;
-    sourceSize = bytes.length;
-    sourceName = file.name.replace(/\.[^.]+$/, '');
 
     // Прев'ю будуємо до відкликання старого URL: якщо воно впаде,
     // у стані має лишитись робоче зображення, а не відкликане посилання.
+    // Байти оригіналу підміняємо теж лише після нього — інакше при
+    // невдачі сцена показувала б один файл, а обробка брала б інший.
     let preview: { url: string; dims: { w: number; h: number } | null };
     try {
       preview = await makePreview(bytes, mime);
     } catch (e) {
-      error = e instanceof Error ? e.message : t.errProcess;
+      if (token === acceptToken) error = e instanceof Error ? e.message : t.errProcess;
       return;
     }
+    if (token !== acceptToken) { URL.revokeObjectURL(preview.url); return; }
+    sourceBytes = bytes;
+    sourceMime = mime;
+    sourceSize = bytes.length;
+    sourceName = file.name.replace(/\.[^.]+$/, '');
     if (sourceUrl !== '') URL.revokeObjectURL(sourceUrl);
     sourceUrl = preview.url;
     sourceDims = preview.dims;
+    // Мазки лежать у координатах попереднього файлу: на новому вони
+    // вирізали б невидимі дірки
+    resetStrokes();
 
     // Сторінки конвертації ставлять межу 20000×20000, щоб нічого не
     // масштабувати. Як поведінка це правильно, але в полях розміру
@@ -368,9 +385,11 @@
     if (files.length === 0) return;
     if (files.length === 1) { await accept(files[0]!); return; }
 
+    ++acceptToken;
     error = '';
     clearBatch();
     resetSingle();
+    resetStrokes();
 
     const items: BatchItem[] = [];
     for (const file of files) {
@@ -422,7 +441,8 @@
 
   async function runAll(): Promise<void> {
     if (batchBusy) return;
-    const job = buildJob(state);
+    // Мазки належать одному файлу, на пакет їх не переносимо
+    const job = buildJob({ ...state, paint: { keep: null, erase: null } });
     const model = needsModel(state);
     if (model) await warmUp();
 
@@ -459,7 +479,7 @@
           }
         },
       });
-      reportRun(job.ops.map((o) => o.type));
+      reportRun(statOps(job, pending.map((i) => i.mime)));
     } finally {
       // Лише свій прогін: застарілий не має права гасити стан наступного.
       if (token === runToken) {
@@ -542,6 +562,20 @@
    * притлумлюються, щоб один сеанс не рахувався десять разів.
    */
   let lastReport = 0;
+
+  /**
+   * Назви для лічильника.
+   *
+   * Зміна формату операцією в Job не є — це просто інший вихідний формат,
+   * — тож «конвертацію» дописуємо самі, коли вихід відрізняється від входу.
+   */
+  function statOps(job: Job, mimes: readonly string[]): string[] {
+    const ops: string[] = job.ops.map((o) => o.type);
+    const out = `image/${job.output.format}`;
+    if (mimes.some((m) => m !== out)) ops.push('convert');
+    return ops;
+  }
+
   function reportRun(ops: string[]): void {
     const now = Date.now();
     if (now - lastReport < 20_000) return;
@@ -601,7 +635,7 @@
       if (stale !== '') URL.revokeObjectURL(stale);
 
       elapsed = Math.round(performance.now() - started);
-      reportRun(job.ops.map((o) => o.type));
+      reportRun(statOps(job, [sourceMime]));
     } catch (e) {
       if (token === processToken) error = e instanceof Error ? e.message : t.errProcess;
     } finally {
@@ -626,12 +660,18 @@
 
   function onStroke(m: { keep: Mask | null; erase: Mask | null }): void {
     state.paint = m;
+    // Та сама причина, що й в onBgToggle: у JPEG стерте стало б чорним
+    if (m.erase !== null && state.format === 'jpeg') state.format = 'png';
     void process();
   }
 
-  function clearStrokes(): void {
+  function resetStrokes(): void {
     brush.clearToken += 1;
     state.paint = { keep: null, erase: null };
+  }
+
+  function clearStrokes(): void {
+    resetStrokes();
     void process();
   }
 
@@ -743,6 +783,9 @@
         data-ready={ready}
         onchange={(e) => {
           const files = Array.from(e.currentTarget.files ?? []);
+          // Інакше повторний вибір того самого файлу не дає change зовсім
+          // — і скинути правки, взявши файл заново, було б неможливо
+          e.currentTarget.value = '';
           if (files.length > 0) void acceptMany(files);
         }}
       />

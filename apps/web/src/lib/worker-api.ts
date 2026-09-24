@@ -144,23 +144,26 @@ export function buildJob(s: WidgetState): Job {
       shrink: s.shrink,
       despeckle: s.despeckle,
     });
-    if (s.outlineOn && s.outlineWidth > 0) {
-      ops.push({
-        type: 'outline',
-        width: s.outlineWidth,
-        color: parseHexColor(s.outlineColor),
-      });
-    }
   }
 
   // Пензель — одразу після моделі й до всього, що рухає геометрію.
   // Мазки лежать у координатах оригіналу: якби операція йшла після
-  // кадрування чи збільшення, вони поїхали б разом із кадром.
+  // кадрування чи збільшення, вони поїхали б разом із кадром. Обведення
+  // теж рухає геометрію — розширює полотно, — тож і воно йде після: так
+  // мазок лягає туди, де його провели, а повернуте обводиться.
   if (s.paint.keep !== null || s.paint.erase !== null) {
     ops.push({
       type: 'paint',
       ...(s.paint.keep !== null ? { keep: plainMask(s.paint.keep) } : {}),
       ...(s.paint.erase !== null ? { erase: plainMask(s.paint.erase) } : {}),
+    });
+  }
+
+  if (s.removeBg && s.outlineOn && s.outlineWidth > 0) {
+    ops.push({
+      type: 'outline',
+      width: s.outlineWidth,
+      color: parseHexColor(s.outlineColor),
     });
   }
 

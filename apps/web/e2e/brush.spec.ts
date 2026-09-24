@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { join } from 'node:path';
+import { plainJpeg } from './fixtures.js';
 
 const SPHERE = join(import.meta.dirname, 'sphere.png');
 
@@ -22,12 +23,13 @@ const centreAlpha = (page: Page) => page.getByTestId('result').evaluate(async (e
   ).data[3]!;
 });
 
-async function scribble(page: Page): Promise<void> {
+/** Мазок навколо точки (fx, fy) — частки сцени; типово центр. */
+async function scribble(page: Page, fx = 0.5, fy = 0.5): Promise<void> {
   const stage = page.getByTestId('stage');
   await stage.scrollIntoViewIfNeeded();
   const b = (await stage.boundingBox())!;
-  const cx = b.x + b.width / 2;
-  const cy = b.y + b.height / 2;
+  const cx = b.x + b.width * fx;
+  const cy = b.y + b.height * fy;
   await page.mouse.move(cx - 40, cy);
   await page.mouse.down();
   await page.mouse.move(cx + 40, cy, { steps: 10 });
@@ -87,4 +89,62 @@ test('мазок не перезапускає обробку щокадру', a
   const runs = await page.evaluate(() => (window as unknown as { __runs: number }).__runs);
   expect(runs).toBeGreaterThan(0);
   expect(runs).toBeLessThanOrEqual(2);
+});
+
+test('стерти повернуте можна знову', async ({ page }) => {
+  await ready(page);
+  await page.getByTestId('brush-toggle').click();
+  await scribble(page);
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(0);
+
+  await page.getByTestId('brush-restore').click();
+  await scribble(page);
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(255);
+
+  await page.getByTestId('brush-erase').click();
+  await scribble(page);
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(0);
+});
+
+test('вимкнений і знову ввімкнений пензель не губить мазків', async ({ page }) => {
+  await ready(page);
+  await page.getByTestId('brush-toggle').click();
+  await scribble(page);
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(0);
+
+  await page.getByTestId('brush-toggle').click();
+  await page.getByTestId('brush-toggle').click();
+  // Новий мазок деінде — старий у центрі має лишитись
+  await scribble(page, 0.5, 0.15);
+  await page.waitForTimeout(1500);
+  expect(await centreAlpha(page)).toBe(0);
+});
+
+test('мазки не переходять на наступний файл', async ({ page }) => {
+  await ready(page);
+  await page.getByTestId('brush-toggle').click();
+  await scribble(page);
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(0);
+
+  await page.setInputFiles('[data-testid="pick"]', await plainJpeg());
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(255);
+});
+
+test('той самий файл, вибраний знову, починає з чистого', async ({ page }) => {
+  await ready(page);
+  await page.getByTestId('brush-toggle').click();
+  await scribble(page);
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(0);
+
+  await page.setInputFiles('[data-testid="pick"]', SPHERE);
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(255);
+});
+
+test('стирання в JPEG перемикає на PNG', async ({ page }) => {
+  await ready(page);
+  await page.getByLabel(/Формат|Format/).selectOption('jpeg');
+  await page.getByTestId('brush-toggle').click();
+  await scribble(page);
+  await expect(page.getByLabel(/Формат|Format/)).toHaveValue('png');
+  await expect.poll(() => centreAlpha(page), { timeout: 60_000 }).toBe(0);
 });
