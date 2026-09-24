@@ -3,12 +3,12 @@ import type { Context } from '../ports/index.js';
 import { fit } from './fit.js';
 import { crop } from './crop.js';
 import { applyMask } from './applyMask.js';
-import { outline } from './outline.js';
+import { outlineWithRing } from './outline.js';
 import { composite } from './composite.js';
-import { paint } from './paint.js';
+import { paint, paintMask } from './paint.js';
 import { smartCrop } from './smartCrop.js';
 import { trim } from './trim.js';
-import { despeckleMask, erodeMask, featherMask, fillMaskHoles } from './mask.js';
+import { despeckleMask, erodeMask, featherMask, fillMaskHoles, resampleMask } from './mask.js';
 import { upscaleTiled } from './upscale.js';
 import { orient } from './orient.js';
 
@@ -24,21 +24,20 @@ function tierOf(ops: readonly Op[]): Tier {
 }
 
 /**
- * Готує маску один раз на весь Job.
- *
- * Видалення фону, аутлайн і розумна обрізка спираються на ту саму маску.
- * Рахувати її тричі означало б утричі довше чекати найдорожчий крок
- * пайплайна — для isnet це 665 мс проти двох секунд.
- */
-/**
  * Чистить маску одразу після моделі — до того, як її побачать усі операції.
  *
  * Робиться централізовано навмисно: обведення, розумна обрізка й видалення
  * фону мають спиратися на однакову маску. Якби чистка жила лише всередині
  * removeBackground, обведення обводило б хибні острівці, які вже прибрані
  * з видимого результату.
+ *
+ * Острівці й дірки міряються частками кадру, тож їм байдуже, в якій
+ * роздільності маска, — і вони лишаються в дешевій роздільності моделі.
+ * Стискання ж задане в пікселях, і це пікселі зображення: у 320² моделі
+ * один піксель — це дванадцять пікселів дванадцятимегапіксельного фото.
+ * Тож маска спершу доводиться до розміру кадру, а стискається вже там.
  */
-function refineMask(mask: Mask, ops: readonly Op[]): Mask {
+function refineMask(mask: Mask, img: RasterImage, ops: readonly Op[]): Mask {
   const bg = ops.find((o) => o.type === 'removeBackground');
   const despeckle = bg?.type === 'removeBackground' ? bg.despeckle !== false : true;
   const fill = bg?.type === 'removeBackground' ? bg.fillHoles !== false : true;
@@ -47,10 +46,24 @@ function refineMask(mask: Mask, ops: readonly Op[]): Mask {
   let m = mask;
   if (despeckle) m = despeckleMask(m);
   if (fill) m = fillMaskHoles(m);
+  m = toSize(m, img);
   if (shrink > 0) m = erodeMask(m, shrink);
   return m;
 }
 
+function toSize(mask: Mask, img: RasterImage): Mask {
+  return mask.width === img.width && mask.height === img.height
+    ? mask
+    : resampleMask(mask, img.width, img.height);
+}
+
+/**
+ * Готує маску один раз на весь Job.
+ *
+ * Видалення фону, аутлайн і розумна обрізка спираються на ту саму маску.
+ * Рахувати її тричі означало б утричі довше чекати найдорожчий крок
+ * пайплайна — для isnet це 665 мс проти двох секунд.
+ */
 async function buildMask(img: RasterImage, job: Job, ctx: Context): Promise<Mask> {
   if (ctx.segmenter === undefined) {
     throw new Error(
@@ -61,7 +74,7 @@ async function buildMask(img: RasterImage, job: Job, ctx: Context): Promise<Mask
   const seg = ctx.segmenter(tierOf(job.ops));
   await seg.load();
   try {
-    return refineMask(await seg.segment(img), job.ops);
+    return refineMask(await seg.segment(img), img, job.ops);
   } finally {
     await seg.dispose();
   }
@@ -119,21 +132,35 @@ async function autoOrient(
   }
 }
 
-function applyOp(img: RasterImage, op: Op, mask: Mask | null): RasterImage {
+/**
+ * Крок пайплайна: нове зображення й маска, яка йому відповідає.
+ *
+ * Пензель і обведення міняють не лише пікселі, а й те, що вважати
+ * суб'єктом, тож маску після них несемо далі оновленою.
+ */
+function applyOp(
+  img: RasterImage, op: Op, mask: Mask | null,
+): { img: RasterImage; mask: Mask | null } {
   switch (op.type) {
-    case 'fit': return fit(img, op);
-    case 'crop': return crop(img, op.rect);
+    case 'fit': return { img: fit(img, op), mask };
+    case 'crop': return { img: crop(img, op.rect), mask };
     case 'removeBackground': {
+      // Пом'якшення — у пікселях того кадру, з якого знімаємо фон
+      const base = toSize(mask!, img);
       const m = op.feather !== undefined && op.feather > 0
-        ? featherMask(mask!, op.feather)
-        : mask!;
-      return applyMask(img, m);
+        ? featherMask(base, op.feather)
+        : base;
+      return { img: applyMask(img, m), mask };
     }
-    case 'outline': return outline(img, mask!, op);
-    case 'smartCrop': return smartCrop(img, mask!, op);
-    case 'trim': return trim(img, mask!, op);
-    case 'composite': return composite(img, op.layers);
-    case 'paint': return paint(img, op);
+    case 'outline': {
+      const o = outlineWithRing(img, mask!, op);
+      return { img: o.image, mask: o.ring };
+    }
+    case 'smartCrop': return { img: smartCrop(img, mask!, op), mask };
+    case 'trim': return { img: trim(img, mask!, op), mask };
+    case 'composite': return { img: composite(img, op.layers), mask };
+    case 'paint':
+      return { img: paint(img, op), mask: mask === null ? null : paintMask(toSize(mask, img), op) };
     case 'upscale':
       throw new Error('Збільшення виконується окремо — сюди воно не має потрапляти');
     default: {
@@ -155,14 +182,16 @@ export async function runJob(
   }
 
   let img = await autoOrient(await ctx.codec.decode(input, mime), input, mime, job, ctx);
-  const mask = job.ops.some((o) => NEEDS_MASK.has(o.type))
+  let mask = job.ops.some((o) => NEEDS_MASK.has(o.type))
     ? await buildMask(img, job, ctx)
     : null;
 
   for (const op of job.ops) {
-    img = op.type === 'upscale'
-      ? await applyUpscale(img, op.factor, ctx)
-      : applyOp(img, op, mask);
+    if (op.type === 'upscale') {
+      img = await applyUpscale(img, op.factor, ctx);
+      continue;
+    }
+    ({ img, mask } = applyOp(img, op, mask));
   }
   return ctx.codec.encode(img, job.output);
 }

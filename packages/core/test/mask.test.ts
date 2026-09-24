@@ -83,6 +83,23 @@ describe('featherMask', () => {
     expect(edge).toBeGreaterThan(0);
     expect(edge).toBeLessThan(255);
   });
+
+  it('збігається з наївним двопрохідним розмиттям', () => {
+    const m = maskWithRect(31, 19, 4, 3, 22, 15);
+    m.data[0] = 200; m.data[30] = 90;
+    const r = 4;
+    const at = (x: number, y: number): number =>
+      m.data[Math.min(m.height - 1, Math.max(0, y)) * m.width + Math.min(m.width - 1, Math.max(0, x))]!;
+    const got = featherMask(m, r);
+    for (let y = 0; y < m.height; y++) {
+      for (let x = 0; x < m.width; x++) {
+        let sum = 0;
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) sum += at(x + dx, y + dy);
+        const want = sum / ((2 * r + 1) ** 2);
+        expect(Math.abs(got.data[y * m.width + x]! - want)).toBeLessThanOrEqual(0.5);
+      }
+    }
+  });
 });
 
 describe('thresholdMask', () => {

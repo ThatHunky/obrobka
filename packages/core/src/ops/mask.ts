@@ -104,6 +104,12 @@ export function dilateMask(mask: Mask, radius: number): Mask {
  *
  * Коробкове, а не гаусове: центр краю не зсувається, а різниця на око
  * непомітна при радіусах, які тут використовуються.
+ *
+ * Суми ковзні, тож ціна не залежить від радіуса. Маска тепер приходить у
+ * роздільності зображення, а не моделі, — на 12 Мп наївні 2·(2r+1)
+ * звертань на піксель коштували б секунду на кожен рух повзунка.
+ * Суми цілі й ділиться лише наприкінці: так результат не залежить від
+ * того, в якому порядку їх накопичено.
  */
 export function featherMask(mask: Mask, radius: number): Mask {
   const r = Math.round(radius);
@@ -111,31 +117,39 @@ export function featherMask(mask: Mask, radius: number): Mask {
     return { data: new Uint8ClampedArray(mask.data), width: mask.width, height: mask.height };
   }
 
-  const tmp = new Float32Array(mask.data.length);
-  const out = new Uint8ClampedArray(mask.data.length);
+  const { width: w, height: h } = mask;
   const span = r * 2 + 1;
+  const tmp = new Int32Array(mask.data.length);
+  const out = new Uint8ClampedArray(mask.data.length);
+  const cx = (x: number): number => (x < 0 ? 0 : x >= w ? w - 1 : x);
+  const cy = (y: number): number => (y < 0 ? 0 : y >= h ? h - 1 : y);
 
-  for (let y = 0; y < mask.height; y++) {
-    for (let x = 0; x < mask.width; x++) {
-      let sum = 0;
-      for (let k = -r; k <= r; k++) {
-        const xx = Math.min(mask.width - 1, Math.max(0, x + k));
-        sum += mask.data[y * mask.width + xx]!;
-      }
-      tmp[y * mask.width + x] = sum / span;
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    let sum = 0;
+    for (let k = -r; k <= r; k++) sum += mask.data[row + cx(k)]!;
+    for (let x = 0; x < w; x++) {
+      tmp[row + x] = sum;
+      sum += mask.data[row + cx(x + r + 1)]! - mask.data[row + cx(x - r)]!;
     }
   }
-  for (let y = 0; y < mask.height; y++) {
-    for (let x = 0; x < mask.width; x++) {
-      let sum = 0;
-      for (let k = -r; k <= r; k++) {
-        const yy = Math.min(mask.height - 1, Math.max(0, y + k));
-        sum += tmp[yy * mask.width + x]!;
-      }
-      out[y * mask.width + x] = sum / span;
+
+  const col = new Int32Array(w);
+  for (let k = -r; k <= r; k++) {
+    const row = cy(k) * w;
+    for (let x = 0; x < w; x++) col[x] = col[x]! + tmp[row + x]!;
+  }
+  const area = span * span;
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    const add = cy(y + r + 1) * w;
+    const drop = cy(y - r) * w;
+    for (let x = 0; x < w; x++) {
+      out[row + x] = col[x]! / area;
+      col[x] = col[x]! + tmp[add + x]! - tmp[drop + x]!;
     }
   }
-  return { data: out, width: mask.width, height: mask.height };
+  return { data: out, width: w, height: h };
 }
 
 /** Різкий поріг: усе вище стає 255, решта 0. */
@@ -152,6 +166,16 @@ export function thresholdMask(mask: Mask, threshold = DEFAULT_THRESHOLD): Mask {
  *
  * Головний засіб проти кольорового ореолу: край маски підтягується
  * всередину повз пікселі, колір яких уже змішаний із фоном.
+ *
+ * Те, що за межами кадру, в мінімум не йде. Край кадру — не край
+ * суб'єкта: коли людину обрізано по пояс, під рамкою лежить та сама
+ * людина, а не фон, і стискати маску звідти означало б прорізати
+ * прозору смугу по низу фотографії.
+ *
+ * Круг розкладено на горизонтальні хорди: для кожного рядка один раз
+ * рахуються мінімуми на відрізках завдовжки 1, 3, … 2r+1, а далі круг
+ * збирається з 2r+1 готових хорд. Маска тут у роздільності зображення,
+ * і наївні πr² звертань на піксель на 12 Мп тягнули б на секунди.
  */
 export function erodeMask(mask: Mask, radius: number): Mask {
   const r = Math.round(radius);
@@ -159,27 +183,51 @@ export function erodeMask(mask: Mask, radius: number): Mask {
     return { data: new Uint8ClampedArray(mask.data), width: mask.width, height: mask.height };
   }
 
-  const out = new Uint8ClampedArray(mask.data.length);
-  const r2 = r * r;
-  for (let y = 0; y < mask.height; y++) {
-    for (let x = 0; x < mask.width; x++) {
-      let worst = 255;
-      for (let dy = -r; dy <= r && worst > 0; dy++) {
-        const yy = y + dy;
-        for (let dx = -r; dx <= r; dx++) {
-          if (dx * dx + dy * dy > r2) continue;
-          const xx = x + dx;
-          // За межами зображення вважаємо порожньо: край має стискатись
-          const v = (yy < 0 || yy >= mask.height || xx < 0 || xx >= mask.width)
-            ? 0
-            : mask.data[yy * mask.width + xx]!;
-          if (v < worst) { worst = v; if (worst === 0) break; }
-        }
+  const { width: w, height: h } = mask;
+  const src = mask.data;
+  const out = new Uint8ClampedArray(src.length);
+
+  // Півдовжина хорди круга на відстані dy від центру
+  const chord = new Int32Array(2 * r + 1);
+  for (let dy = -r; dy <= r; dy++) chord[dy + r] = Math.floor(Math.sqrt(r * r - dy * dy));
+
+  // Кільцевий буфер на 2r+1 рядків; у кожному r+1 рядків мінімумів
+  const span = 2 * r + 1;
+  const slot = (r + 1) * w;
+  const buf = new Uint8Array(span * slot);
+
+  function fillRow(yy: number): void {
+    const base = (yy % span) * slot;
+    const row = yy * w;
+    buf.set(src.subarray(row, row + w), base);
+    for (let k = 1; k <= r; k++) {
+      const prev = base + (k - 1) * w;
+      const cur = base + k * w;
+      for (let x = 0; x < w; x++) {
+        let v = buf[prev + x]!;
+        if (x - k >= 0 && src[row + x - k]! < v) v = src[row + x - k]!;
+        if (x + k < w && src[row + x + k]! < v) v = src[row + x + k]!;
+        buf[cur + x] = v;
       }
-      out[y * mask.width + x] = worst;
     }
   }
-  return { data: out, width: mask.width, height: mask.height };
+
+  for (let yy = 0; yy <= Math.min(r, h - 1); yy++) fillRow(yy);
+  for (let y = 0; y < h; y++) {
+    if (y > 0 && y + r < h) fillRow(y + r);
+    const row = y * w;
+    out.fill(255, row, row + w);
+    for (let dy = -r; dy <= r; dy++) {
+      const yy = y + dy;
+      if (yy < 0 || yy >= h) continue;
+      const from = (yy % span) * slot + chord[dy + r]! * w;
+      for (let x = 0; x < w; x++) {
+        const v = buf[from + x]!;
+        if (v < out[row + x]!) out[row + x] = v;
+      }
+    }
+  }
+  return { data: out, width: w, height: h };
 }
 
 /** Розмічає зв'язні області за чотирма сусідами. Повертає мітки й площі. */

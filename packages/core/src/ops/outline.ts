@@ -9,9 +9,26 @@ import { dilateMask, featherMask, resampleMask } from './mask.js';
  * обведення з'їло б край суб'єкта.
  */
 export function outline(img: RasterImage, mask: Mask, opts: OutlineOptions): RasterImage {
+  return outlineWithRing(img, mask, opts).image;
+}
+
+/**
+ * Обведення разом із його маскою на новому полотні.
+ *
+ * Пайплайну потрібна й маска: обрізка після обведення мусить бачити
+ * суб'єкт уже з кільцем і на розширеному полотні. Інакше стара маска
+ * розтягувалась би на ширше полотно й з'їжджала, а обрізка з малим
+ * запасом зрізала б саме кільце.
+ */
+export function outlineWithRing(
+  img: RasterImage, mask: Mask, opts: OutlineOptions,
+): { image: RasterImage; ring: Mask } {
   const width = Math.max(0, Math.round(opts.width));
   if (width === 0) {
-    return { data: new Uint8ClampedArray(img.data), width: img.width, height: img.height };
+    return {
+      image: { data: new Uint8ClampedArray(img.data), width: img.width, height: img.height },
+      ring: mask,
+    };
   }
 
   const expand = opts.expand ?? true;
@@ -63,5 +80,5 @@ export function outline(img: RasterImage, mask: Mask, opts: OutlineOptions): Ras
     }
   }
 
-  return { data: out, width: outW, height: outH };
+  return { image: { data: out, width: outW, height: outH }, ring };
 }

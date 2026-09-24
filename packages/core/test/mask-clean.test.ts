@@ -24,9 +24,36 @@ describe('erodeMask', () => {
     expect(Array.from(erodeMask(m, 0).data)).toEqual(Array.from(m.data));
   });
 
-  it('стискає й від краю кадру — інакше ореол лишався б по межі', () => {
-    const m = rect(blank(20, 20), 0, 0, 20, 20);
-    expect(maskBBox(erodeMask(m, 2))).toEqual({ x: 2, y: 2, width: 16, height: 16 });
+  it('не прорізає смугу там, де суб\'єкт обрізано рамкою', () => {
+    // Людина по пояс: під нижнім краєм — вона сама, а не фон
+    const m = rect(blank(20, 20), 5, 5, 15, 20);
+    const out = erodeMask(m, 2);
+    expect(out.data[19 * 20 + 10]).toBe(255);
+    expect(maskBBox(out)).toEqual({ x: 7, y: 7, width: 6, height: 13 });
+  });
+
+  it('збігається з наївним мінімумом по кругу', () => {
+    let seed = 7;
+    const rnd = (): number => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % 256; };
+    const m = blank(23, 17);
+    for (let i = 0; i < m.data.length; i++) m.data[i] = rnd();
+    for (const r of [1, 2, 3, 5]) {
+      const got = erodeMask(m, r);
+      for (let y = 0; y < m.height; y++) {
+        for (let x = 0; x < m.width; x++) {
+          let worst = 255;
+          for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+              const xx = x + dx, yy = y + dy;
+              if (dx * dx + dy * dy > r * r) continue;
+              if (xx < 0 || yy < 0 || xx >= m.width || yy >= m.height) continue;
+              worst = Math.min(worst, m.data[yy * m.width + xx]!);
+            }
+          }
+          expect(got.data[y * m.width + x]).toBe(worst);
+        }
+      }
+    }
   });
 
   it('ерозія скасовує дилатацію за площею', () => {
