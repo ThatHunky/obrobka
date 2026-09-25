@@ -54,7 +54,7 @@ describe('сторінка інструмента', () => {
 describe('сторінки видалення фону', () => {
   it('українська сторінка згенерована', async () => {
     const html = await readFile(join(dist, 'видалити-фон', 'index.html'), 'utf8');
-    expect(html).toContain('Видалення фону');
+    expect(html).toContain('Видалити фон з фото');
     expect(html).toContain('hreflang="en"');
   });
 
@@ -65,7 +65,7 @@ describe('сторінки видалення фону', () => {
 
   it('сторінка розумної обрізки згенерована', async () => {
     const html = await readFile(join(dist, 'розумна-обрізка', 'index.html'), 'utf8');
-    expect(html).toContain('Обрізка за суб');
+    expect(html).toContain('Обрізати фото за об');
   });
 
   it('пресет видалення фону доїхав у віджет', async () => {

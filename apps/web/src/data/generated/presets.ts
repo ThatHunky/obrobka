@@ -45,7 +45,8 @@ const PRESETS: readonly PresetSpec[] = [
     id: 'instagram-portrait',
     slug: { uk: 'вертикальне-фото-для-інстаграму', en: 'instagram-portrait-size' },
     width: 1080, height: 1350, mode: 'cover', format: 'jpeg', padTransparent: false,
-    name: { uk: 'Вертикальний допис в Instagram', en: 'Portrait Instagram post' },
+    // «формат 4:5» шукають 3 600 разів на місяць — саме так, а не «вертикальний допис».
+    name: { uk: 'Формат 4:5 для Instagram', en: 'Portrait Instagram post' },
     why: {
       uk: 'Співвідношення 4:5 займає у стрічці найбільше висоти з дозволених — '
         + 'тому вертикальні дописи візуально «більші» за квадратні.',
@@ -129,7 +130,7 @@ const PRESETS: readonly PresetSpec[] = [
     id: 'avatar',
     slug: { uk: 'аватар', en: 'avatar-size' },
     width: 400, height: 400, mode: 'cover', format: 'png', padTransparent: false,
-    name: { uk: 'Аватар', en: 'Avatar' },
+    name: { uk: 'Аватарка', en: 'Avatar' },
     why: {
       uk: 'Квадрат, який майже скрізь показується колом. Тому обличчя чи логотип '
         + 'мають бути в центрі: кути однаково зріжуться.',
@@ -278,7 +279,7 @@ export function presetPages(): ToolEntry[] {
         ? `${name} — ${size} онлайн і безкоштовно, без завантаження на сервер`
         : `${name} — ${size} online and free, nothing uploaded`,
       description: uk
-        ? `Приведіть будь-яке зображення до ${size} для «${name.toLowerCase()}» просто у браузері. `
+        ? `${name} — ${size}: приведіть будь-яке зображення до цього розміру просто у браузері. `
           + `Файл не залишає ваш пристрій.`
         : `Bring any image to ${size} for a ${name.toLowerCase()}, right in the browser. `
           + `The file never leaves your device.`,

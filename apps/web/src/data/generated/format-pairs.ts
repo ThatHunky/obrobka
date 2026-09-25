@@ -24,6 +24,17 @@ const UK_CASE: Readonly<Record<SourceFormat, string>> = {
   png: 'PNG', jpeg: 'JPEG', webp: 'WebP', avif: 'AVIF', heic: 'HEIC',
 };
 
+/**
+ * Назва формату в заголовку — так, як її набирають у пошуку.
+ *
+ * «webp в jpg» шукають у тринадцять разів частіше за «webp в jpeg»
+ * (DataForSEO, Україна, 2026-09-25). У тексті лишається JPEG: там це
+ * назва формату, а не запит.
+ */
+function searchName(f: SourceFormat): string {
+  return f === 'jpeg' ? 'JPG' : FORMATS[f].label;
+}
+
 function sizeLine(to: TargetFormat, locale: 'uk' | 'en'): string {
   const photo = FORMATS[to].photoKb;
   const graphic = FORMATS[to].graphicKb;
@@ -262,8 +273,8 @@ export function formatPairPages(): ToolEntry[] {
           group: 'format' as const,
           slug: locale === 'uk' ? `${from}-в-${to}` : `${from}-to-${to}`,
           title: locale === 'uk'
-            ? `Конвертувати ${UK_CASE[from]} у ${FORMATS[to].label} онлайн — у браузері, без завантаження`
-            : `Convert ${FORMATS[from].label} to ${FORMATS[to].label} online — in the browser, nothing uploaded`,
+            ? `${searchName(from)} в ${searchName(to)} — конвертер онлайн, у браузері й без завантаження`
+            : `${searchName(from)} to ${searchName(to)} converter — online, in the browser, nothing uploaded`,
           // Опис — це те, що покаже пошук. Спільний шаблон на всі пари
           // дав би п'ятнадцять однакових рядків у видачі, тож тут
           // виміряне число саме цього переходу.
@@ -275,8 +286,8 @@ export function formatPairPages(): ToolEntry[] {
               + `${FORMATS[from].photoKb || '—'} kB on a 1200×800 frame. Right in your tab, `
               + `the file never leaves your device.`,
           h1: locale === 'uk'
-            ? `${UK_CASE[from]} у ${FORMATS[to].label}`
-            : `${FORMATS[from].label} to ${FORMATS[to].label}`,
+            ? `${searchName(from)} в ${searchName(to)}`
+            : `${searchName(from)} to ${searchName(to)}`,
           intro: intro(from, to, locale),
           preset: { ...KEEP_SIZE, format: to, padTransparent: to !== 'jpeg' },
           steps: steps(from, to, locale),
